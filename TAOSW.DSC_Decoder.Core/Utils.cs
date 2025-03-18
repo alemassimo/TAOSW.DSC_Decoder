@@ -19,5 +19,14 @@ namespace TAOSW.DSC_Decoder.Core
             }
             return floatData;
         }
+
+        /// <summary>
+        /// Dato un numero intero la funzione deve restiutuire 2 caratteri 
+        /// esempio input 1 restituisce "01"
+        /// input 10 restituisce "10"
+        public static string IntTo2CharString(int number)
+        {
+            return number.ToString().PadLeft(2, '0');
+        }
     }
 }

@@ -2,7 +2,7 @@
 
 namespace TAOSW.DSC_Decoder.Core
 {
-    public class AutoTuner
+    public class FskAutoTuner
     {
         private Dictionary<float, int> freqPowerDictionary = [];
         private readonly Queue<float[]> signalBuffer = new();
@@ -13,7 +13,7 @@ namespace TAOSW.DSC_Decoder.Core
         private readonly int sampleRate;
         private readonly float shift;
 
-        public AutoTuner(float maxFreq, float minFreq, int sampleRate, float shift)
+        public FskAutoTuner(float maxFreq, float minFreq, int sampleRate, float shift)
         {
             this.maxFreq = maxFreq;
             this.minFreq = minFreq;
@@ -63,7 +63,7 @@ namespace TAOSW.DSC_Decoder.Core
             autoRightFreq = rF;
 
 #if DEBUG
-            Console.WriteLine($"Left: {autoLeftFreq} Right: {autoRightFreq}");
+           // Console.WriteLine($"Left: {autoLeftFreq} Right: {autoRightFreq}");
 #endif
         }
 
