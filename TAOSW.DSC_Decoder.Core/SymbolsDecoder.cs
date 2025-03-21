@@ -40,7 +40,7 @@ namespace TAOSW.DSC_Decoder.Core
         private static DSCMessage DecodeAutomaticServiceCall(IEnumerable<int> symbols)
         {
             var From = ExtractMmsiNumber(symbols.Skip(2).Take(5));
-            throw new NotImplementedException("DecodeAutomaticServiceCall format not implemented");
+            throw new NotImplementedException("AutomaticServiceCall format not implemented");
         }
 
         private static DSCMessage DecodeGeographicAreaGroupCall(IEnumerable<int> symbols)
@@ -74,7 +74,7 @@ namespace TAOSW.DSC_Decoder.Core
         private static DSCMessage DecodeGroupCall(IEnumerable<int> symbols)
         {
             var To = ExtractMmsiNumber(symbols.Skip(2).Take(5));
-            throw new NotImplementedException("DecodeGroupCall format not implemented.");
+            throw new NotImplementedException("GroupCall format not implemented.");
         }
 
         private static DSCMessage DecodeAllShipsCall(IEnumerable<int> symbols)
