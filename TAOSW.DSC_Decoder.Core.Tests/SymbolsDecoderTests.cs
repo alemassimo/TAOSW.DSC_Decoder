@@ -44,7 +44,7 @@ namespace TAOSW.DSC_Decoder.Core.Tests
                 Time = "12:52",
                 Symbols = symbols,
                 To = "ALL SHIPS"
-                
+
             };
             var result = SymbolsDecoder.Decode(symbols);
             expected.Should().BeEquivalentTo(result);
@@ -241,5 +241,72 @@ namespace TAOSW.DSC_Decoder.Core.Tests
             var result = SymbolsDecoder.Decode(symbols);
             expected.Should().BeEquivalentTo(result);
         }
+
+        //TIME: 2025-03-19 10:48:55 FREQ: 8414.5 DIST: -- Km
+        //SYMB: 120 120 000 021 050 010 000 108 022 093 064 000 000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+        // FMT: SEL
+        // CAT: SAF
+        //  TO: COAST,002150100,MLT,Malta Radio
+        //FROM: SHIP,229364000,???
+        // TC1: UNK/ERR
+        // TC2: UNK/ERR
+        //FREQ: --/--
+        // POS: --
+        // EOS: ~~~
+        //cECC: 50 ERR
+        [TestMethod]
+        public void DecodeUnknownErrorTest()
+        {
+            var symbols = new List<int> { 120, 120, 000, 021, 050, 010, 000, 108, 022, 093, 064, 000, 000, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
+            var expected = new DSCMessage
+            {
+                Symbols = symbols,
+                Format = FormatSpecifier.IndividualStationCall,
+                Category = CategoryOfCall.Safety,
+                To = "002150100",
+                From = "229364000",
+                TC1 = FirstCommand.Error,
+                TC2 = SecondCommand.Error,
+                EOS = EndOfSequence.Error,
+                CECC = -1,
+                Status = "Error"
+            };
+            var result = SymbolsDecoder.Decode(symbols);
+            expected.Should().BeEquivalentTo(result);
+        }
+
+        //TIME: 2025-03-21 14:06:08 FREQ: 8414.5 DIST: 1036 Km
+        //SYMB: 120 120 051 089 099 019 050 100 000 027 011 000 000 126 126 126 126 126 126 126 126 117 081 117 117 
+        // FMT: SEL
+        // CAT: RTN
+        //  TO: SHIP,518999195,???
+        //FROM: COAST,002711000,TUR,Istanbul Radio
+        // TC1: NOINF
+        // TC2: NOINF
+        //FREQ: --
+        // POS: --
+        // EOS: REQ
+        //cECC: 81 OK
+        [TestMethod]
+        public void DecodeRequestTest()
+        {
+            var symbols = new List<int> { 120, 120, 051, 089, 099, 019, 050, 100, 000, 027, 011, 000, 000, 126, 126, 126, 126, 126, 126, 126, 126, 117, 081, 117, 117 };
+            var expected = new DSCMessage
+            {
+                Symbols = symbols,
+                Format = FormatSpecifier.IndividualStationCall,
+                Category = CategoryOfCall.Routine,
+                To = "518999195",
+                From = "002711000",
+                TC1 = FirstCommand.NoInformation,
+                TC2 = SecondCommand.NoInformation,
+                EOS = EndOfSequence.AcknowledgeRQ,
+                CECC = 81,
+                Status = "OK"
+            };
+            var result = SymbolsDecoder.Decode(symbols);
+            expected.Should().BeEquivalentTo(result);
+        }
+
     }
 }
