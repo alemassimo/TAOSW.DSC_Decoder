@@ -308,5 +308,73 @@ namespace TAOSW.DSC_Decoder.Core.Tests
             expected.Should().BeEquivalentTo(result);
         }
 
+        //TIME: 2025-03-21 19:41:51 FREQ: 2187.5 DIST: 992 Km
+        //SYMB: 102 102 004 040 003 005 008 108 000 022 075 040 000 109 126 002 018 020 002 018 020 127 049 127 127 
+        // FMT: AREA
+        // CAT: SAF
+        //  TO: AREA 44°N=>05° 003°E=>08°
+        //FROM: COAST,002275400,FRA,CROSS La Garde
+        // TC1: J3E TP
+        // TC2: NOINF
+        //FREQ: 02182.0/02182.0KHz
+        // POS: -- 
+        // EOS: EOS
+        //cECC: 49 OK
+        [TestMethod]
+        public void DecodeAreaTest()
+        {
+            var symbols = new List<int> { 102, 102, 004, 040, 003, 005, 008, 108, 000, 022, 075, 040, 000, 109, 126, 002, 018, 020, 002, 018, 020, 127, 049, 127, 127 };
+            var expected = new DSCMessage
+            {
+                Symbols = symbols,
+                Format = FormatSpecifier.GeographicAreaGroupCall,
+                Category = CategoryOfCall.Safety,
+                To = "North-East (NE), Reference point: 44°, 3°, Vertical side: 5°, Horizontal side: 8°",
+                From = "002275400",
+                TC1 = FirstCommand.J3ETP,
+                TC2 = SecondCommand.NoInformation,
+                Frequency = "02182.0/02182.0",
+                EOS = EndOfSequence.OtherCalls,
+                CECC = 49,
+                Status = "OK"
+            };
+            var result = SymbolsDecoder.Decode(symbols);
+            expected.Should().BeEquivalentTo(result);
+        }
+
+        //TIME: 2025-03-21 19:52:24 FREQ: 2187.5 DIST: 2121 Km
+        //SYMB: 116 116 108 000 022 041 002 020 109 126 002 012 030 001 069 080 127 089 127 ~~~
+        // FMT: ALL
+        // CAT: SAF
+        //FROM: COAST,002241022,ESP,Coruna Radio
+        //  TO: ALL SHIPS
+        // TC1: J3E TP
+        // TC2: NOINF
+        //FREQ: 02123.0/01698.0KHz
+        // POS: --
+        // EOS: EOS
+        //cECC: 89 OK
+        [TestMethod]
+        public void DecodeAllShipsCallTest2()
+        {
+            var symbols = new List<int> { 116, 116, 108, 000, 022, 041, 002, 020, 109, 126, 002, 012, 030, 001, 069, 080, 127, 089, 127, -1, -1, -1 };
+            var expected = new DSCMessage
+            {
+                Symbols = symbols,
+                Format = FormatSpecifier.AllShipsCall,
+                Category = CategoryOfCall.Safety,
+                To = "ALL SHIPS",
+                From = "002241022",
+                TC1 = FirstCommand.J3ETP,
+                TC2 = SecondCommand.NoInformation,
+                Frequency = "02123.0/01698.0",
+                EOS = EndOfSequence.OtherCalls,
+                CECC = 89,
+                Status = "OK"
+            };
+            var result = SymbolsDecoder.Decode(symbols);
+            expected.Should().BeEquivalentTo(result);
+        }
+
     }
 }

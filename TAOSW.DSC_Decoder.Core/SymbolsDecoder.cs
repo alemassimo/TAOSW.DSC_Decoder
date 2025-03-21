@@ -1,12 +1,4 @@
-﻿using MathNet.Numerics.Distributions;
-using MathNet.Numerics;
-using Microsoft.VisualBasic;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection.Metadata.Ecma335;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Text;
 using TAOSW.DSC_Decoder.Core.Domain;
 
 namespace TAOSW.DSC_Decoder.Core
@@ -18,29 +10,63 @@ namespace TAOSW.DSC_Decoder.Core
             // if first symbol is -1, then the format specifier is the second symbol
             var format = symbols.First() != -1 ? symbols.First() : symbols.ElementAt(1);
             var formatType = GetFormatSpecifier(format);
-
-            return formatType switch
+            try
             {
-                FormatSpecifier.DistressAlert => DecodeDistressAlert(symbols),
-                FormatSpecifier.AllShipsCall => DecodeAllShipsCall(symbols),
-                FormatSpecifier.GroupCall => DecodeGroupCall(symbols),
-                FormatSpecifier.IndividualStationCall => DecodeIndividualStationCall(symbols),
-                FormatSpecifier.GeographicAreaGroupCall => DecodeGeographicAreaGroupCall(symbols),
-                FormatSpecifier.AutomaticServiceCall => DecodeAutomaticServiceCall(symbols),
-                _ => throw new ArgumentException("Invalid format specifier", nameof(symbols))
-            };
+                return formatType switch
+                {
+                    FormatSpecifier.DistressAlert => DecodeDistressAlert(symbols),
+                    FormatSpecifier.AllShipsCall => DecodeAllShipsCall(symbols),
+                    FormatSpecifier.GroupCall => DecodeGroupCall(symbols),
+                    FormatSpecifier.IndividualStationCall => DecodeIndividualStationCall(symbols),
+                    FormatSpecifier.GeographicAreaGroupCall => DecodeGeographicAreaGroupCall(symbols),
+                    FormatSpecifier.AutomaticServiceCall => DecodeAutomaticServiceCall(symbols),
+                    _ => throw new ArgumentException("Invalid format specifier", nameof(symbols))
+                }; 
+            }
+            // catch all ArgumentException and NotImplementedException and return a DSCMessage with the error message
+            catch ( Exception ex) when (ex is ArgumentException || ex is NotImplementedException)
+            {
+                return new DSCMessage
+                {
+                    Symbols = symbols.ToList(),
+                    Format = formatType,
+                    Status = $"Error -> {ex.Message}"
+                };
+            }
+            
+
         }
 
         private static DSCMessage DecodeAutomaticServiceCall(IEnumerable<int> symbols)
         {
             var From = ExtractMmsiNumber(symbols.Skip(2).Take(5));
-            throw new NotImplementedException();
+            throw new NotImplementedException("DecodeAutomaticServiceCall format not implemented");
         }
 
         private static DSCMessage DecodeGeographicAreaGroupCall(IEnumerable<int> symbols)
         {
-            var From = ExtractMmsiNumber(symbols.Skip(2).Take(5));
-            throw new NotImplementedException();
+            var To = ExtractGeographicArea(symbols.Skip(2).Take(5));
+            var category = ExtractCategoryOfCall(symbols.ElementAt(7));
+            var From = ExtractMmsiNumber(symbols.Skip(8).Take(5));
+            var TC1 = ExtractFirstCommand(symbols.ElementAt(13));
+            var TC2 = ExtractSecondCommand(symbols.ElementAt(14));
+            var freq = ExtractFrequencies(symbols.Skip(15).Take(6).ToList());
+            var eos = ExtractEos(symbols.Skip(21).Take(4));
+            var ecc = symbols.ElementAt(22);
+            return new DSCMessage
+            {
+                Symbols = symbols.ToList(),
+                Format = FormatSpecifier.GeographicAreaGroupCall,
+                Category = category,
+                To = To,
+                From = From,
+                TC1 = TC1,
+                TC2 = TC2,
+                EOS = eos,
+                CECC = ecc,
+                Frequency = TC1 == FirstCommand.J3ETP ? freq : null,
+                Status = CheckEcc(symbols, 22) ? "OK" : "Error"
+            };
         }
 
         
@@ -48,7 +74,7 @@ namespace TAOSW.DSC_Decoder.Core
         private static DSCMessage DecodeGroupCall(IEnumerable<int> symbols)
         {
             var To = ExtractMmsiNumber(symbols.Skip(2).Take(5));
-            throw new NotImplementedException();
+            throw new NotImplementedException("DecodeGroupCall format not implemented.");
         }
 
         private static DSCMessage DecodeAllShipsCall(IEnumerable<int> symbols)
@@ -210,7 +236,6 @@ namespace TAOSW.DSC_Decoder.Core
         private static SecondCommand ExtractSecondCommand(int symbol) => GetEnumValue<SecondCommand>(symbol);
         private static string ExtractMmsiNumber(IEnumerable<int> symbols)
         {
-            // il numero di simboli deve essere 5
             if (symbols.Count() != 5) throw new ArgumentException("Invalid number of symbols", nameof(symbols));
 
             StringBuilder mmsi = new StringBuilder();
@@ -226,15 +251,13 @@ namespace TAOSW.DSC_Decoder.Core
 
         private static string ExtractTime(IEnumerable<int> input)
         {
-            if (input.Contains(-1)) return "--error--";
             if (input == null || input.Count() != 2)
-            {
                 throw new ArgumentException("Input must be a list of exactly 2 integers (each representing 2 digits).");
-            }
+            
             string digits = string.Join("", input.ToList().ConvertAll(n => n.ToString("D2")));
 
-            var hh = digits.Substring(0, 2);
-            var mm = digits.Substring(2, 2);
+            var hh = digits.Substring(0, 2) == "-1" ? "__" : digits.Substring(0, 2);
+            var mm = digits.Substring(2, 2) == "-1" ? "__" : digits.Substring(2, 2);
             return $"{hh}:{mm}";
         }
 
@@ -257,18 +280,17 @@ namespace TAOSW.DSC_Decoder.Core
                 _ => "Unknown quadrant"
             };
 
-            var latitude = digits.Substring(0, 3)+"."+ digits.Substring(3, 2);
-            var longitude = digits.Substring(5, 3)+"." + digits.Substring(8, 2);
+            var latitude = digits.Substring(0, 3)+"." + digits.Substring(3, 2);
+            var longitude = digits.Substring(5, 3) + "." + digits.Substring(8, 2);
 
             return $"{quadrantName}, Latitude: {latitude}°, Longitude: {longitude}°";
         }
 
-        private static string DecodeGeographicArea(IEnumerable<int> input)
+        private static string ExtractGeographicArea(IEnumerable<int> input)
         {
-            // check if input contain a -1 symbol and so is impossibile to decode
             if (input.Contains(-1)) return "--error--";
 
-            if (input == null || input.Count() != 7)
+            if (input == null || input.Count() != 5)
             {
                 throw new ArgumentException("Input must be a list of exactly 7 integers (each representing 2 digits).");
             }
@@ -303,19 +325,16 @@ namespace TAOSW.DSC_Decoder.Core
 
         private static string ExtractFrequencies(List<int> input)
         {
-            if (input == null || input.Count != 6)
-            {
+            if (input == null || input.Count != 6) 
                 throw new ArgumentException("Input must be a list of exactly 6 integers.");
-            }
             
-
             // Convert the list of integers to a string of digits
             string digits = string.Join("",  input.ConvertAll(n => n==-1 ? "__" : n.ToString("D2")));
 
             // Extract the two frequencies
             string frequency1 = digits.Substring(0, 5) + "." + digits.Substring(5, 1);
-            // se gli ultimi 3 simboli sono uguali a 126 allora non aggiungere la seconda parte della frequenza
-            
+
+            // check if second frequency exists
             string frequency2 = input.Skip(3).All(n => n > 99) ? "" : digits.Substring(6, 5) + "." + digits.Substring(11, 1);
 
             return String.IsNullOrEmpty( frequency2) ? frequency1 : $"{frequency1}/{frequency2}";
