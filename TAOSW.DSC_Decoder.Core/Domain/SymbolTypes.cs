@@ -7,7 +7,8 @@
         GroupCall = 114, // symbol No. 114 for a selective call to a group of ships having a common interest
         IndividualStationCall = 120, // symbol No. 120 for a selective call to a particular individual station
         GeographicAreaGroupCall = 102, // symbol No. 102 for a selective call to a group of ships in a particular geographic area
-        AutomaticServiceCall = 123 // symbol No. 123 for a selective call to a particular individual station using the automatic service
+        AutomaticServiceCall = 123,
+        Error = -1 // symbol No. 123 for a selective call to a particular individual station using the automatic service
     }
 
     public enum CategoryOfCall
@@ -15,7 +16,8 @@
         Routine = 100,
         Safety = 108,
         Urgency = 110,
-        Distress = 112
+        Distress = 112,
+        Error = -1
     }
 
     public enum NatureOfDistress
@@ -30,7 +32,8 @@
         UndesignatedDistress = 107, // Undesignated distress
         AbandoningShip = 108, // Abandoning ship
         PiracyArmedRobberyAttack = 109, // Piracy/armed robbery attack
-        ManOverboard = 110 // Man overboard
+        ManOverboard = 110, // Man overboard
+        Error = -1
     }
 
     public enum FirstCommand
@@ -48,8 +51,24 @@
         TTYARQ = 115, // F1B/J2B TTY-ARQ
         Test = 118, // Test
         ShipPositionOrLocationRegistrationUpdating = 121, // Ship position or location registration updating
-        NoInformation = 126 // No information
+        NoInformation = 126, // No informatio
+        Error = -1
     }
+
+    //symbol No. 117 if the call requires acknowledgement (Acknowledge RQ), used for 
+    //individual and automatic calls only;
+    //symbol No. 122 if the sequence is an answer to a call that requires acknowledgement
+    //(Acknowledge BQ), used for individual and automatic calls and all distress alert relay
+    //acknowledgements;
+    //symbol No. 127 for all other calls.
+    public enum EndOfSequence
+    {
+        AcknowledgeRQ = 117, // Acknowledge RQ
+        AcknowledgeBQ = 122, // Acknowledge BQ
+        OtherCalls = 127, // Other calls
+        Error = -1
+    }
+
 
     public enum SecondCommand
     {
@@ -73,6 +92,7 @@
         ThreeTimesRemainingACSSequentialTransmission = 123, // 3 times remaining ACS sequential transmission
         FourTimesRemainingACSSequentialTransmission = 124, // 4 times remaining ACS sequential transmission
         FiveTimesRemainingACSSequentialTransmission = 125, // 5 times remaining ACS sequential transmission
-        NoInformation = 126 // No information
+        NoInformation = 126, // No information
+        Error = -1
     }
 }

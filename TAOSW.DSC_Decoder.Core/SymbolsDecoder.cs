@@ -27,6 +27,43 @@ namespace TAOSW.DSC_Decoder.Core
             };
         }
 
+        private static DSCMessage DecodeAutomaticServiceCall(IEnumerable<int> symbols)
+        {
+            var From = ExtractMmsiNumber(symbols.Skip(2).Take(5));
+            throw new NotImplementedException();
+        }
+
+        private static DSCMessage DecodeGeographicAreaGroupCall(IEnumerable<int> symbols)
+        {
+            var From = ExtractMmsiNumber(symbols.Skip(2).Take(5));
+            throw new NotImplementedException();
+        }
+
+        private static DSCMessage DecodeIndividualStationCall(IEnumerable<int> symbols)
+        {
+            var To = ExtractMmsiNumber(symbols.Skip(2).Take(5));
+            throw new NotImplementedException();
+        }
+
+        private static DSCMessage DecodeGroupCall(IEnumerable<int> symbols)
+        {
+            var To = ExtractMmsiNumber(symbols.Skip(2).Take(5));
+            throw new NotImplementedException();
+        }
+
+        private static DSCMessage DecodeAllShipsCall(IEnumerable<int> symbols)
+        {
+            var To = "ALL SHIPS";
+            throw new NotImplementedException();
+        }
+
+        private static DSCMessage DecodeDistressAlert(IEnumerable<int> symbols)
+        {
+            var From = ExtractMmsiNumber(symbols.Skip(2).Take(5));
+            var nature = ExtractNaturOfDistress(symbols.ElementAt(8));
+            throw new NotImplementedException();
+        }
+
         private static FormatSpecifier GetFormatSpecifier(int symbol)=> GetEnumValue<FormatSpecifier>(symbol);
 
         private static TEnum GetEnumValue<TEnum>(int symbol) where TEnum : Enum
@@ -59,6 +96,9 @@ namespace TAOSW.DSC_Decoder.Core
 
         private static string DecodeGeographicArea(List<int> input)
         {
+            // check if input contain a -1 symbol and so is impossibile to decode
+            if (input.Contains(-1)) return "--error--";
+
             if (input == null || input.Count != 5)
             {
                 throw new ArgumentException("Input must be a list of exactly 5 integers (each representing 2 digits).");
@@ -100,7 +140,7 @@ namespace TAOSW.DSC_Decoder.Core
             }
 
             // Convert the list of integers to a string of digits
-            string digits = string.Join("", input.ConvertAll(n => n.ToString("D2")));
+            string digits = string.Join("",  input.ConvertAll(n => n==-1 ? "__" : n.ToString("D2")));
 
             // Extract the two frequencies
             string frequency1 = digits.Substring(0, 5) + "." + digits.Substring(5, 1);
