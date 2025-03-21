@@ -1,4 +1,5 @@
 ﻿using FluentAssertions;
+using MathNet.Numerics.Providers.LinearAlgebra;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -32,17 +33,41 @@ namespace TAOSW.DSC_Decoder.Core.Tests
             var symbols = new List<int> { 112, 112, 025, 058, 005, 099, 070, 107, 004, 052, 060, 013, 007, 012, 052, 109, 127, 052, 127, 127 };
             var expected = new DSCMessage
             {
-                Frequency = "",
                 Category = CategoryOfCall.Distress,
                 Format = FormatSpecifier.DistressAlert,
                 Nature = NatureOfDistress.UndesignatedDistress,
                 From = "255805997",
-                Position = "45.26°N 013.07°E",
+                Position = "North-East (NE), Latitude: 045.26°, Longitude: 013.07°", // "45.26°N 013.07°E",
                 EOS = EndOfSequence.OtherCalls,
                 CECC = 52,
                 Status = "OK",
-                Symbols = symbols
+                Time = "12:52",
+                Symbols = symbols,
+                To = "ALL SHIPS"
                 
+            };
+            var result = SymbolsDecoder.Decode(symbols);
+            expected.Should().BeEquivalentTo(result);
+        }
+
+        [TestMethod]
+        public void DecodeDistressAlertTestWithError()
+        {
+            var symbols = new List<int> { 112, 112, 025, 058, 005, 099, 070, 107, 004, 052, 060, 013, 007, 012, 052, 109, 127, 051, 127, 127 };
+            var expected = new DSCMessage
+            {
+                Category = CategoryOfCall.Distress,
+                Format = FormatSpecifier.DistressAlert,
+                Nature = NatureOfDistress.UndesignatedDistress,
+                From = "255805997",
+                Position = "North-East (NE), Latitude: 045.26°, Longitude: 013.07°", // "45.26°N 013.07°E",
+                EOS = EndOfSequence.OtherCalls,
+                CECC = 51,
+                Status = "Error",
+                Time = "12:52",
+                Symbols = symbols,
+                To = "ALL SHIPS"
+
             };
             var result = SymbolsDecoder.Decode(symbols);
             expected.Should().BeEquivalentTo(result);
@@ -66,11 +91,10 @@ namespace TAOSW.DSC_Decoder.Core.Tests
             var symbols = new List<int> { 120, 120, 000, 023, 071, 000, 000, 108, 032, 051, 042, 000, 000, 118, 126, 038, 075, 000, 038, 075, 000, 117, 000, 117, 117 };
             var expected = new DSCMessage
             {
-                Frequency = "",
                 Symbols = symbols,
                 Format = FormatSpecifier.IndividualStationCall,
                 Category = CategoryOfCall.Safety,
-                To = "COAST,002371000,GRC,Olympia Radio",
+                To = "002371000",
                 From = "325142000",
                 TC1 = FirstCommand.Test,
                 TC2 = SecondCommand.NoInformation,
@@ -100,12 +124,11 @@ namespace TAOSW.DSC_Decoder.Core.Tests
             var symbols = new List<int> { 120, 120, 032, 051, 042, 000, 000, 108, 000, 023, 071, 000, 000, 118, 126, 004, 010, 010, 004, 039, 030, 122, 054, 122, 122, -1 };
             var expected = new DSCMessage
             {
-                Frequency = "",
                 Symbols = symbols,
                 Format = FormatSpecifier.IndividualStationCall,
                 Category = CategoryOfCall.Safety,
-                To = "SHIP,325142000,???",
-                From = "COAST,002371000,GRC,Olympia Radio",
+                To = "325142000",
+                From = "002371000",
                 TC1 = FirstCommand.Test,
                 TC2 = SecondCommand.NoInformation,
                 EOS = EndOfSequence.AcknowledgeBQ,
@@ -139,8 +162,8 @@ namespace TAOSW.DSC_Decoder.Core.Tests
                 Symbols = symbols,
                 Format = FormatSpecifier.IndividualStationCall,
                 Category = CategoryOfCall.Routine,
-                To = "SHIP,341855000,???",
-                From = "COAST,002371000,GRC,Olympia Radio",
+                To = "341855000",
+                From = "002371000",
                 TC1 = FirstCommand.J3ETP,
                 TC2 = SecondCommand.NoInformation,
                 EOS = EndOfSequence.AcknowledgeBQ,
@@ -173,11 +196,11 @@ namespace TAOSW.DSC_Decoder.Core.Tests
                 Symbols = symbols,
                 Format = FormatSpecifier.IndividualStationCall,
                 Category = CategoryOfCall.Routine,
-                To = "COAST,002371000,GRC,Olympia Radio",
-                From = "SHIP,238230000,???",
+                To = "002371000",
+                From = "238230000",
                 TC1 = FirstCommand.J3ETP,
                 TC2 = SecondCommand.NoInformation,
-                EOS = EndOfSequence.OtherCalls,
+                EOS = EndOfSequence.AcknowledgeRQ,
                 CECC = 7,
                 Status = "OK"
             };
@@ -208,7 +231,7 @@ namespace TAOSW.DSC_Decoder.Core.Tests
                 Format = FormatSpecifier.AllShipsCall,
                 Category = CategoryOfCall.Safety,
                 To = "ALL SHIPS",
-                From = "COAST,002371000,GRC,Olympia Radio",
+                From = "002371000",
                 TC1 = FirstCommand.J3ETP,
                 TC2 = SecondCommand.NoInformation,
                 EOS = EndOfSequence.OtherCalls,

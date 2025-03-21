@@ -2,7 +2,7 @@
 
 public class DSCMessage
 {
-    public string Frequency { get; set; }
+    public string? Frequency { get; set; }
     public List<int> Symbols { get; set; }
     public FormatSpecifier Format { get; set; }
     public CategoryOfCall Category { get; set; }
@@ -13,6 +13,7 @@ public class DSCMessage
     public FirstCommand TC1 { get; set; }
     public SecondCommand TC2 { get; set; }
     public string Position { get; set; }
+    public string Time { get; set; }
     public EndOfSequence EOS { get; set; }
     public int CECC { get; set; }
     public string Status { get; set; }
