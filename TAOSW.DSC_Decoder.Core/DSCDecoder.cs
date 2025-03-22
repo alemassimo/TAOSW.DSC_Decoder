@@ -2,8 +2,15 @@
 {
     public class DSCDecoder
     {
+        private int _baudRate; // DSC uses 100 Baud
+
+        public DSCDecoder(int baudRate)
+        {
+            _baudRate = baudRate;
+        }
+
         private static FSKDetector FSKDetector = new FSKDetector();
-        public static List<int> DecodeFSK(float[] signal, int sampleRate, float lFreq, float rFreq)
+        public List<int> DecodeFSK(float[] signal, int sampleRate, float lFreq, float rFreq)
         {
             List<int> bitStream = new List<int>();
             int baudRate = 100; // DSC usa 100 Baud

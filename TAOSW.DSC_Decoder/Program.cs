@@ -10,10 +10,11 @@ class Program
     static void Main(string[] args)
     {
         IAudioCapture audioCapture = new AudioCapture(SampleRate);
-        AutoTuner autoTuner = new AutoTuner(700, 300, SampleRate,170);
+        FskAutoTuner autoTuner = new FskAutoTuner(700, 300, SampleRate,170);
         var squelchLevelDetector = new SquelchLevelDetector(0.0000001f, 0f);
         var devices = audioCapture.GetAudioCaptureDevices();
         var decoder = new GMDSSDecoder();
+        DSCDecoder dSCDecoder = new DSCDecoder(100);
 
         Console.WriteLine("Available audio capture devices:");
         foreach (var device in devices)Console.WriteLine(device);
@@ -43,9 +44,7 @@ class Program
 
                 float[] processedSignal = autoTuner.ProcessSignal(signal);
 
-                //var bits = DSCDecoder.DecodeFSK(signal, SampleRate, 409.0f, 590.0f);
-                //var bits = DSCDecoder.DecodeFSK(processedSignal, SampleRate,409  ,579);
-                var bits = DSCDecoder.DecodeFSK(processedSignal, SampleRate, autoTuner.LeftFreq, autoTuner.RightFreq);
+                var bits = dSCDecoder.DecodeFSK(processedSignal, SampleRate, autoTuner.LeftFreq, autoTuner.RightFreq);
                 decoder.AddBits(bits);
             }
 
