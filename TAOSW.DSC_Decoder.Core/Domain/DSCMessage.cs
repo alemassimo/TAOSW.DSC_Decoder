@@ -25,17 +25,21 @@ public class DSCMessage
 
     public override string ToString()
     {
-        return $"SYMB: {string.Join(" ", Symbols)}\n" +
-               $"FMT: {Format}\n" +
-               $"CAT: {Category}\n" +
-               $"TO: {To}\n" +
-               $"FROM: {From}\n" +
+        return $"Symbols: {string.Join(" ", Symbols)}\n" +
+               $"Format: {Format}\n" +
+               $"Category: {Category}\n" +
+               $"To: {To}\n" +
+               $"From: {From}\n" +
                $"TC1: {TC1}\n" +
                $"TC2: {TC2}\n" +
-               $"FREQ: {Frequency}\n" +
-               $"POS: {Position}\n" +
+               $"Frequency: {Frequency}\n" +
+               $"Position: {Position}\n" +
                $"EOS: {EOS}\n" +
-               $"cECC: {CECC} {Status}";
+               $"Nature: {Nature}\n" +
+               $"NatureDescription: {NatureDescription}\n" +
+               $"Time: {Time}\n" +
+               $"Status: {Status}\n" +
+               $"cECC: {CECC}";
     }
 }
 

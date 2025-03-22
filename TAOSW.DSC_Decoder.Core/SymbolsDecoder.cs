@@ -69,8 +69,6 @@ namespace TAOSW.DSC_Decoder.Core
             };
         }
 
-        
-
         private static DSCMessage DecodeGroupCall(IEnumerable<int> symbols)
         {
             var To = ExtractMmsiNumber(symbols.Skip(2).Take(5));
@@ -131,7 +129,6 @@ namespace TAOSW.DSC_Decoder.Core
 
         private static CategoryOfCall ExtractCategoryOfCall(int symbol)=> GetEnumValue<CategoryOfCall>(symbol);
         
-
         private static DSCMessage DecodeDistressAlert(IEnumerable<int> symbols)
         {
             var From = ExtractMmsiNumber(symbols.Skip(2).Take(5));
@@ -202,7 +199,6 @@ namespace TAOSW.DSC_Decoder.Core
             return (ecc & 0b01111111) == calculatedECC;
         }
 
-
         private static EndOfSequence ExtractEos(IEnumerable<int> symbols)
         {
             if (symbols == null || symbols.Count() != 4)
@@ -220,7 +216,8 @@ namespace TAOSW.DSC_Decoder.Core
             return GetEnumValue<EndOfSequence>(symbol);
         }
 
-    private static FormatSpecifier GetFormatSpecifier(int symbol)=> GetEnumValue<FormatSpecifier>(symbol);
+        private static FormatSpecifier GetFormatSpecifier(int symbol)=> 
+            GetEnumValue<FormatSpecifier>(symbol);
 
         private static TEnum GetEnumValue<TEnum>(int symbol) where TEnum : Enum
         {
@@ -230,7 +227,6 @@ namespace TAOSW.DSC_Decoder.Core
             throw new ArgumentException("Invalid symbol", nameof(symbol));
         }
 
-        
         private static NatureOfDistress ExtractNaturOfDistress(int symbol) => GetEnumValue<NatureOfDistress>(symbol);
         private static FirstCommand ExtractFirstCommand(int symbol) => GetEnumValue<FirstCommand>(symbol);
         private static SecondCommand ExtractSecondCommand(int symbol) => GetEnumValue<SecondCommand>(symbol);

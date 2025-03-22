@@ -1,4 +1,6 @@
-﻿public class GMDSSDecoder
+﻿using TAOSW.DSC_Decoder.Core;
+
+public class GMDSSDecoder
 {
     private Queue<int> bitBuffer = new Queue<int>();
     private const int BUFFER_SIZE = 1024;
@@ -190,7 +192,6 @@
         return bytes;
     }
 
-    // il bit meno rilevante è a sinistra
     public static int RetriveDataByte(IEnumerable<int> bits, int i)
     {
         var bitsArray = bits.ToArray();
@@ -238,17 +239,18 @@
         return zeroCount;
     }
 
-    private DSCMessage? ParseDSCMessage(List<int> dataBytes)
+    private DSCMessage? ParseDSCMessage(List<int> data)
     {
         try
         {
-            // TO DO : implementare il parsing del messaggio data la lista di symbols
-
-            return new DSCMessage {  };
+            return SymbolsDecoder.Decode(data);
         }
         catch(Exception ex)
         {
-            return null;
+#if DEBUG
+            Console.WriteLine($"Errore in ParseDSCMessage: {ex.Message}");
+#endif
+            throw;
         }
     }
 }
