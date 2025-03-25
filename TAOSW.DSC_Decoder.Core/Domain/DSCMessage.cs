@@ -7,12 +7,12 @@ public class DSCMessage
     public FormatSpecifier Format { get; set; }
     public CategoryOfCall Category { get; set; }
     public NatureOfDistress? Nature { get; set; }
-    public string NatureDescription { get; set; }
+    public string? NatureDescription { get; set; }
     public string To { get; set; }
     public string From { get; set; }
     public FirstCommand TC1 { get; set; }
     public SecondCommand TC2 { get; set; }
-    public string Position { get; set; }
+    public string? Position { get; set; }
     public string Time { get; set; }
     public EndOfSequence EOS { get; set; }
     public int CECC { get; set; }

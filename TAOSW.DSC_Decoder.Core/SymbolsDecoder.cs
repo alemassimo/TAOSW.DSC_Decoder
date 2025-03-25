@@ -108,7 +108,22 @@ namespace TAOSW.DSC_Decoder.Core
             var From = ExtractMmsiNumber(symbols.Skip(8).Take(5));
             var TC1 = ExtractFirstCommand(symbols.ElementAt(13));
             var TC2 = ExtractSecondCommand(symbols.ElementAt(14));
-            var freq = ExtractFrequencies(symbols.Skip(15).Take(6).ToList());
+            string? freq = null;
+            string? position = null;
+            string? description = null;
+            switch (symbols.ElementAt(15))
+            {
+                case 55:
+                    position = ExtractPosition(symbols.Skip(16).Take(5));
+                    break;
+                case 126:
+                    description = "Position Requested";
+                    break;
+                default:
+                    freq = ExtractFrequencies(symbols.Skip(15).Take(6).ToList());
+                    break;
+            }
+
             var eos = ExtractEos(symbols.Skip(21).Take(4));
             var ecc = symbols.ElementAt(22);
             return new DSCMessage
@@ -123,7 +138,9 @@ namespace TAOSW.DSC_Decoder.Core
                 EOS = eos,
                 CECC = ecc,
                 Frequency = TC1 == FirstCommand.J3ETP ? freq : null,
-                Status = CheckEcc(symbols, 22) ? "OK" : "Error"
+                Position = position,
+                Status = CheckEcc(symbols, 22) ? "OK" : "Error",
+                NatureDescription = description
             };
         }
 
@@ -238,6 +255,7 @@ namespace TAOSW.DSC_Decoder.Core
             foreach (var symbol in symbols)
             {
                 if (symbol == -1) mmsi.Append("__");
+                else
                 mmsi.Append(Utils.IntTo2CharString(symbol));
             }
 
