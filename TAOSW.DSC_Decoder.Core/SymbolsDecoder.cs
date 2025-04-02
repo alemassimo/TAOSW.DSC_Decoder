@@ -241,6 +241,14 @@ namespace TAOSW.DSC_Decoder.Core
             foreach (TEnum enumValue in Enum.GetValues(typeof(TEnum)))
                 if (Convert.ToInt32(enumValue) == symbol) return enumValue;
 
+            return GetEnumValueWithException<TEnum>(-1);
+        }
+
+        private static TEnum GetEnumValueWithException<TEnum>(int symbol) where TEnum : Enum
+        {
+            foreach (TEnum enumValue in Enum.GetValues(typeof(TEnum)))
+                if (Convert.ToInt32(enumValue) == symbol) return enumValue;
+
             throw new ArgumentException("Invalid symbol", nameof(symbol));
         }
 

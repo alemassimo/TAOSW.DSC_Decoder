@@ -2,6 +2,7 @@
 using System;
 using TAOSW.DSC_Decoder.Core;
 using TAOSW.DSC_Decoder.Core.Interfaces;
+using TAOSW.DSC_Decoder.Core.TAOSW.DSC_Decoder.Core;
 
 class Program
 {
@@ -14,7 +15,7 @@ class Program
         var squelchLevelDetector = new SquelchLevelDetector(0.0000001f, 0f);
         var devices = audioCapture.GetAudioCaptureDevices();
         var decoder = new GMDSSDecoder();
-        DSCDecoder dSCDecoder = new DSCDecoder(100);
+        DSCDecoder dSCDecoder = new DSCDecoder(100, SampleRate);
 
         Console.WriteLine("Available audio capture devices:");
         foreach (var device in devices)Console.WriteLine(device);
@@ -26,7 +27,11 @@ class Program
         {
             audioCapture.StartAudioCapture(deviceNumber);
             Console.WriteLine($"Listening ...");
-            decoder.OnMessageDecoded += (message) => Console.WriteLine(message.ToString());
+            decoder.OnMessageDecoded += (message) =>
+            {
+                Console.WriteLine(DateTime.Now);
+                Console.WriteLine(message.ToString());
+            };
             while (true)
             {
                 if (Console.KeyAvailable)
@@ -37,14 +42,14 @@ class Program
                     // clear screen 
                     if (keyInfo.Key == ConsoleKey.C) Console.Clear();
                 }
-                var result = audioCapture.ReadAudioData(3528); //1764 multiple
+                var result = audioCapture.ReadAudioData(1764); //1764 multiple
                 float[] signal = Utils.ConvertToFloatArray(result);
                
                 if (!squelchLevelDetector.Detect(signal))continue;
 
                 float[] processedSignal = autoTuner.ProcessSignal(signal);
 
-                var bits = dSCDecoder.DecodeFSK(processedSignal, SampleRate, autoTuner.LeftFreq, autoTuner.RightFreq);
+                var bits = dSCDecoder.DecodeFSK(processedSignal, autoTuner.LeftFreq, autoTuner.RightFreq);
                 decoder.AddBits(bits);
             }
 

@@ -721,6 +721,40 @@ namespace TAOSW.DSC_Decoder.Core.Tests
             expected.Should().BeEquivalentTo(result);
         }
 
+        //TIME: 2025-03-28 10:19:09 FREQ: 8414.5 DIST: 618 Km
+        //SYMB: 120 120 066 070 002 040 030 108 000 023 071 000 000 118 126 126 126 126 126 126 126 122 006 122 122 
+        // FMT: SEL
+        // CAT: SAF
+        //  TO: SHIP,667002403,???
+        //FROM: COAST,002371000,GRC,Olympia Radio
+        // TC1: TEST
+        // TC2: NOINF
+        //FREQ: --
+        // POS: --
+        // EOS: ACK
+        //cECC: 6 OK
+        [TestMethod]
+        public void DecodeTestMessageTest()
+        {
+            var symbols = new List<int> { 120, 120, 066, 070, 002, 040, 030, 108, 000, 023, 071, 000, 000, 118, 126, 126, 126, 126, 126, 126, 126, 122, 006, 122, -1 };
+            var expected = new DSCMessage
+            {
+                Symbols = symbols,
+                Format = FormatSpecifier.IndividualStationCall,
+                Category = CategoryOfCall.Safety,
+                To = "667002403",
+                From = "002371000",
+                TC1 = FirstCommand.Test,
+                TC2 = SecondCommand.NoInformation,
+                EOS = EndOfSequence.AcknowledgeBQ,
+                NatureDescription = "Position Requested",
+                CECC = 6,
+                Status = "OK"
+            };
+            var result = SymbolsDecoder.Decode(symbols);
+            expected.Should().BeEquivalentTo(result);
+        }
+
 
     }
 }

@@ -72,8 +72,10 @@ public class AudioCapture : IAudioCapture
             {
                 bufferedWaveProvider.AddSamples(e.Buffer, 0, e.BytesRecorded);
             }
-            catch
-            { }
+            catch (Exception ex)
+            { 
+            
+            }
         };
 
         waveIn.StartRecording();

@@ -4,6 +4,7 @@ namespace TAOSW.DSC_Decoder.Core
 {
     public class FskAutoTuner
     {
+        private const double MagnitudeThreshold = 0.1;
         private Dictionary<float, int> freqPowerDictionary = [];
         private readonly Queue<float[]> signalBuffer = new();
         private float autoLeftFreq;
@@ -57,14 +58,11 @@ namespace TAOSW.DSC_Decoder.Core
             float lF = (float)(f1 < f2 ? f1 : f2);
             float rF = (float)(f1 < f2 ? f2 : f1);
 
-            if (Math.Abs(autoLeftFreq - lF) <= 25) return; 
+            if (Math.Abs(peaks[0].Power - peaks[1].Power) < MagnitudeThreshold * Math.Max(peaks[0].Power, peaks[1].Power)) return;
+            //if (Math.Abs(autoLeftFreq - lF) <= 25) return; 
             
             autoLeftFreq = lF;
             autoRightFreq = rF;
-
-#if DEBUG
-           // Console.WriteLine($"Left: {autoLeftFreq} Right: {autoRightFreq}");
-#endif
         }
 
         private List<FrequencyClusterPower> ExtractsFrequencies(Complex[] fftResult, int sampleRate)
@@ -75,8 +73,8 @@ namespace TAOSW.DSC_Decoder.Core
             for (int i = 0; i < fftSize / 2; i++)
             {
                 float _frequency = (float)i / fftSize * sampleRate;
-                double power = fftResult[i].Magnitude;
                 if (_frequency < minFreq || _frequency > maxFreq) continue;
+                double power = fftResult[i].Magnitude;
                 freqs.Add(new FrequencyClusterPower() { Frequency = _frequency, Power = power });
             }
             return freqs;
