@@ -9,23 +9,25 @@ namespace TAOSW.DSC_Decoder.Core
     {
         public class DSCDecoder
         {
-            private const int SlideWindowsNumber = 3;
+            public const int SlideWindowsNumber = 3;
+            private const float MaxSlideWindowOffset = 0.5f;
             private readonly int _samplesPerBit;
             private readonly int _sampleRate;
             private readonly int _windowSlip;
             private readonly float[] _signalQueue;
-            private static FSKDetector FSKDetector = new FSKDetector();
+            private readonly FSKDetector FskDetector;
 
             public DSCDecoder(int baudRate, int sampleRate)
             {
                 _sampleRate = sampleRate;
                 _samplesPerBit = sampleRate / baudRate;
-                _windowSlip = (_samplesPerBit / 2) / SlideWindowsNumber;
+                _windowSlip =(int)(_samplesPerBit* MaxSlideWindowOffset) / (SlideWindowsNumber);
                 _signalQueue = new float[_samplesPerBit];
+                FskDetector = new FSKDetector(_sampleRate);
 
                 InitSignalQueue();
             }
-            public List<int> DecodeFSK(float[] inSignal, float lFreq, float rFreq)
+            public List<int>[] DecodeFSK(float[] inSignal, float lFreq, float rFreq)
             {
                 List<int>[] bitStreams = InitBitStreams();
 
@@ -43,7 +45,7 @@ namespace TAOSW.DSC_Decoder.Core
 
                 Array.Copy(processedSignal, inSignal.Length, _signalQueue, 0, _samplesPerBit);
 
-                return bitStreams[Array.IndexOf(bitStreamsCertainty, bitStreamsCertainty.Max())];
+                return bitStreams;
             }
 
             private static List<int>[] InitBitStreams()
@@ -57,16 +59,13 @@ namespace TAOSW.DSC_Decoder.Core
             {
                 var chunk = new float[_samplesPerBit];
                 Array.Copy(signal, i + windowNumber * _windowSlip, chunk, 0, _samplesPerBit);
-                return FSKDetector.DetectFSK(chunk, _sampleRate, lFreq, rFreq, out certainty);
+                return FskDetector.DetectFSK(chunk, lFreq, rFreq, out certainty);
             }
 
             private void InitSignalQueue()
             {
                 for (int i = 0; i < _samplesPerBit; i++) _signalQueue[i] = 0;
             }
-
-           
-
         }
 
     }

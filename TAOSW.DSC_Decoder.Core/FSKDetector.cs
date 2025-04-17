@@ -2,15 +2,21 @@
 {
     public class FSKDetector
     {
+        private readonly int _sampleRate;
 
-        public int DetectFSK(float[] inSignal, int sampleRate, float leftFreq, float rightFreq, out double degreeOfCertainty)
+        public FSKDetector(int sampleRate)
+        {
+            _sampleRate = sampleRate;
+        }
+
+        public int DetectFSK(float[] inSignal, float leftFreq, float rightFreq, out double degreeOfCertainty)
         {
             var signal = ApplyHannWindow(inSignal);
             var fftResult = FFTAnalyzer.ComputeFFT(signal, 2048);
             int fftSize = fftResult.Length;
 
-            int binLeft = (int)(leftFreq / sampleRate * fftSize);
-            int binRight = (int)(rightFreq / sampleRate * fftSize);
+            int binLeft = (int)(leftFreq / _sampleRate * fftSize);
+            int binRight = (int)(rightFreq / _sampleRate * fftSize);
 
             double powerLeft = fftResult[binLeft].Magnitude;
             double powerRight = fftResult[binRight].Magnitude;

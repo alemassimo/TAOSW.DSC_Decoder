@@ -1,4 +1,9 @@
-﻿using System.Text;
+﻿using MathNet.Numerics;
+using System;
+using System.Net.NetworkInformation;
+using System.Numerics;
+using System.Text;
+using System.Threading.Channels;
 using TAOSW.DSC_Decoder.Core.Domain;
 
 namespace TAOSW.DSC_Decoder.Core
@@ -137,7 +142,7 @@ namespace TAOSW.DSC_Decoder.Core
                 TC2 = TC2,
                 EOS = eos,
                 CECC = ecc,
-                Frequency = TC1 == FirstCommand.J3ETP ? freq : null,
+                Frequency =  freq,
                 Position = position,
                 Status = CheckEcc(symbols, 22) ? "OK" : "Error",
                 NatureDescription = description
@@ -353,13 +358,67 @@ namespace TAOSW.DSC_Decoder.Core
             // Convert the list of integers to a string of digits
             string digits = string.Join("",  input.ConvertAll(n => n==-1 ? "__" : n.ToString("D2")));
 
-            // Extract the two frequencies
-            string frequency1 = digits.Substring(0, 5) + "." + digits.Substring(5, 1);
 
-            // check if second frequency exists
-            string frequency2 = input.Skip(3).All(n => n > 99) ? "" : digits.Substring(6, 5) + "." + digits.Substring(11, 1);
+            char digit1 = digits[0];
+            char digit2 = digits[1];
 
-            return String.IsNullOrEmpty( frequency2) ? frequency1 : $"{frequency1}/{frequency2}";
+            return digit1 switch
+            {
+                '0' or '1' or '2' => ExtractMfHf100HzMultipleFrequencies(input, digits),
+                '3' => ExtractMfHfWorkingChannelFrequencies(digits),
+                '4' => ExtractMfHf10HzMultipleFrequencies(digits),
+                '9' when digit2 == '0' => ExtractVhfFrequencies(digits),
+                '8' => ExtractVhfAutomatedSystem(digits),
+                _ => "--error--",
+            };
+        }
+
+        private static string ExtractVhfAutomatedSystem(string digits)
+        {
+            throw new NotImplementedException();
+        }
+
+        private static string ExtractVhfFrequencies(string digits)
+        {
+            string channelMode1 = "";
+            string channelMode2 = "";
+            string channelType1 = digits[1] switch
+            {
+                '1' => "Simplex channel ",
+                '2' => "Simplex channel ",
+                '0' => "Duplex channel",
+                _ => "Unknown channel type"
+            };
+            channelMode1 = $"{channelType1} {digits.Substring(3, 3)}";
+            string channelType2 = digits[7] switch
+            {
+                '1' => "Simplex channel ",
+                '2' => "Simplex channel ",
+                '0' => "Duplex channel",
+                _ => "Unknown channel type"
+            };
+            channelMode2 = $"{channelType2} {digits.Substring(9, 3)}";
+
+            return $"{channelMode1} - {channelMode2}";
+            
+        }
+
+        private static string ExtractMfHf10HzMultipleFrequencies(string digits)
+        {
+            throw new NotImplementedException();
+        }
+
+        private static string ExtractMfHfWorkingChannelFrequencies(string digits)
+        {
+            throw new NotImplementedException();
+        }
+
+        private static string ExtractMfHf100HzMultipleFrequencies(IEnumerable<int> input, string chars)
+        {
+            string frequency1 = chars.Substring(0, 5) + "." + chars.Substring(5, 1);
+            string frequency2 = input.Skip(3).All(n => n > 99) ? "" : chars.Substring(6, 5) + "." + chars.Substring(11, 1);
+            
+            return String.IsNullOrEmpty(frequency2) ? frequency1 : $"{frequency1}/{frequency2}";
         }
     }
 }

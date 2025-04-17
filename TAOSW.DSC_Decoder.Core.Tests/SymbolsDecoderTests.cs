@@ -755,6 +755,73 @@ namespace TAOSW.DSC_Decoder.Core.Tests
             expected.Should().BeEquivalentTo(result);
         }
 
+        //TIME: 2025-04-02 12:23:06 FREQ: 8414.5 DIST: 1036 Km
+        //SYMB: 120 120 037 011 095 000 000 100 000 027 011 000 000 126 126 090 087 049 090 082 025 117 037 117 117 
+        // FMT: SEL
+        // CAT: RTN
+        //  TO: SHIP,371195000,???
+        //FROM: COAST,002711000,TUR,Istanbul Radio
+        // TC1: NOINF
+        // TC2: NOINF
+        //FREQ: CH749/CH225
+        // POS: --
+        // EOS: REQ
+        //cECC: 37 OK
+        [TestMethod]
+        public void DecodeRequestTest5()
+        {
+            var symbols = new List<int> { 120, 120, 037, 011, 095, 000, 000, 100, 000, 027, 011, 000, 000, 126, 126, 090, 087, 049, 090, 082, 025, 117, 037, 117, 117 };
+            var expected = new DSCMessage
+            {
+                Symbols = symbols,
+                Format = FormatSpecifier.IndividualStationCall,
+                Category = CategoryOfCall.Routine,
+                To = "371195000",
+                From = "002711000",
+                TC1 = FirstCommand.NoInformation,
+                TC2 = SecondCommand.NoInformation,
+                Frequency = "Duplex channel 749 - Duplex channel 225",
+                EOS = EndOfSequence.AcknowledgeRQ,
+                CECC = 37,
+                Status = "OK"
+            };
+            var result = SymbolsDecoder.Decode(symbols);
+            expected.Should().BeEquivalentTo(result);
+        }
+
+        //TIME: 2025-04-04 10:44:55 FREQ: 8414.5 DIST: -- Km
+        //SYMB: 120 120 035 020 002 055 020 108 027 010 002 060 010 109 126 055 003 061 060 021 023 117 118 117 117 
+        // FMT: SEL
+        // CAT: SAF
+        //  TO: SHIP,352002552,???
+        //FROM: SHIP,271002601,???
+        // TC1: J3E TP
+        // TC2: NOINF
+        //FREQ: --
+        // POS: 36.16°N 021.23°E
+        // EOS: REQ
+        //cECC: 118 OK
+        [TestMethod]
+        public void DecodeRequestTest6()
+        {
+            var symbols = new List<int> { 120, 120, 035, 020, 002, 055, 020, 108, 027, 010, 002, 060, 010, 109, 126, 055, 003, 061, 060, 021, 023, 117, 118, -1, -1 };
+            var expected = new DSCMessage
+            {
+                Symbols = symbols,
+                Format = FormatSpecifier.IndividualStationCall,
+                Category = CategoryOfCall.Safety,
+                To = "352002552",
+                From = "271002601",
+                TC1 = FirstCommand.J3ETP,
+                TC2 = SecondCommand.NoInformation,
+                Position = "North-East (NE), Latitude: 036.16°, Longitude: 021.23°",
+                EOS = EndOfSequence.AcknowledgeRQ,
+                CECC = 118,
+                Status = "OK"
+            };
+            var result = SymbolsDecoder.Decode(symbols);
+            expected.Should().BeEquivalentTo(result);
+        }
 
     }
 }
