@@ -2,7 +2,7 @@
 
 A .NET library for decoding DSC (Digital Selective Calling) messages from audio signals coming from SDR radios or HF receivers with USB (SSB) demodulation.
 
-![TAOSW DSC Decoder GUI](docs/dsc-decoder-gui.png)
+![TAOSW DSC Decoder GUI](Docs/dsc-decoder-gui.png)
 
 ## Overview
 
