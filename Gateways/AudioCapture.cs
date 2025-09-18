@@ -1,3 +1,5 @@
+// Copyright (c) 2025 Tao Energy SRL. Licensed under the MIT License.
+
 using NAudio.Wave;
 using TAOSW.DSC_Decoder.Core.Domain;
 using TAOSW.DSC_Decoder.Core.Interfaces;

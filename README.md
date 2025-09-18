@@ -293,7 +293,9 @@ dotnet test
 
 ## License
 
-This project is open source. Please refer to the license file for specific terms and conditions.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+Copyright © 2025 Tao Energy SRL. All rights reserved.
 
 ## Acknowledgments
 

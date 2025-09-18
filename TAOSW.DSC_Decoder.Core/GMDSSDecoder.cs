@@ -1,4 +1,6 @@
-﻿namespace TAOSW.DSC_Decoder.Core
+﻿// Copyright (c) 2025 Tao Energy SRL. Licensed under the MIT License.
+
+namespace TAOSW.DSC_Decoder.Core
 {
     public class GMDSSDecoder
     {

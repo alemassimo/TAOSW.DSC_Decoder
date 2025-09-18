@@ -1,3 +1,5 @@
+// Copyright (c) 2025 Tao Energy SRL. Licensed under the MIT License.
+
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;

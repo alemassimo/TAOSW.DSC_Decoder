@@ -1,3 +1,5 @@
+// Copyright (c) 2025 Tao Energy SRL. Licensed under the MIT License.
+
 using System;
 using TAOSW.DSC_Decoder.Core;
 using TAOSW.DSC_Decoder.Core.Interfaces;

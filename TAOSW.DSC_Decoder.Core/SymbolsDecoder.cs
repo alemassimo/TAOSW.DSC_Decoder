@@ -1,4 +1,6 @@
-﻿using MathNet.Numerics;
+﻿// Copyright (c) 2025 Tao Energy SRL. Licensed under the MIT License.
+
+using MathNet.Numerics;
 using System;
 using System.Net.NetworkInformation;
 using System.Numerics;
@@ -39,6 +41,7 @@ namespace TAOSW.DSC_Decoder.Core
                 };
             }
             
+
 
         }
 
