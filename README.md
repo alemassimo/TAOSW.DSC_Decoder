@@ -2,6 +2,8 @@
 
 A .NET library for decoding DSC (Digital Selective Calling) messages from audio signals coming from SDR radios or HF receivers with USB (SSB) demodulation.
 
+![TAOSW DSC Decoder GUI](docs/dsc-decoder-gui.png)
+
 ## Overview
 
 This project provides a comprehensive solution for decoding DSC maritime communication messages. It includes both a console application and a GUI application built with Avalonia UI framework.
@@ -48,6 +50,8 @@ The GUI application will:
 1. Show a dialog to select audio device
 2. Display decoded messages in a grid
 3. Play notification sounds for non-test messages
+
+The GUI shows decoded DSC messages in a comprehensive table format with columns for time, frequency, format, nature description, source/destination stations, telecommands, position, end-of-sequence indicators, error correction codes, and status.
 
 ## Using the Core Library
 
