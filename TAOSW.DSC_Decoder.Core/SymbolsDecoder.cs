@@ -119,7 +119,7 @@ namespace TAOSW.DSC_Decoder.Core
             switch (symbols.ElementAt(15))
             {
                 case 55:
-                    position = ExtractPosition(symbols.Skip(16).Take(5));
+                    position = ExtractLongLatPosition(symbols.Skip(16).Take(5));
                     break;
                 case 126:
                     description = "Position Requested";
@@ -155,7 +155,7 @@ namespace TAOSW.DSC_Decoder.Core
         {
             var From = ExtractMmsiNumber(symbols.Skip(2).Take(5));
             var nature = ExtractNaturOfDistress(symbols.ElementAt(7));
-            var position = ExtractPosition(symbols.Skip(8).Take(5));
+            var position = ExtractLongLatPosition(symbols.Skip(8).Take(5));
             var time = ExtractTime(symbols.Skip(13).Take(2));
             var eos = ExtractEos(symbols.Skip(16).Take(4)) ;
             var ecc = symbols.ElementAt(17);
@@ -287,6 +287,29 @@ namespace TAOSW.DSC_Decoder.Core
             var mm = digits.Substring(2, 2) == "-1" ? "__" : digits.Substring(2, 2);
             return $"{hh}:{mm}";
         }
+
+        // extract posizione 10.10N 20.5E format
+        private static string ExtractLongLatPosition(IEnumerable<int> input)
+        {
+            if (input == null || input.Count() != 5)
+            {
+                throw new ArgumentException("Input must be a list of exactly 5 integers (each representing 2 digits).");
+            }
+            string digits = string.Join("", input.ToList().ConvertAll(n => n.ToString("D2")));
+            int quadrant = int.Parse(digits.Substring(0, 1));
+            string quadrantName = quadrant switch
+            {
+                0 => "NE",
+                1 => "NW",
+                2 => "SE",
+                3 => "SW",
+                _ => "Unknown quadrant"
+            };
+            var latitude = digits.Substring(0, 3) + "." + digits.Substring(3, 2);
+            var longitude = digits.Substring(5, 3) + "." + digits.Substring(8, 2);
+            return $"{latitude}{quadrantName.Substring(0,1)} {longitude}{quadrantName.Substring(1, 1)}";
+        }
+
 
         private static string ExtractPosition(IEnumerable<int> input)
         {

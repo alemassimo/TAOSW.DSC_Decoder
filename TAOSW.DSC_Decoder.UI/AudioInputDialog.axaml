@@ -1,0 +1,20 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="320" d:DesignHeight="200"
+        x:Class="TAOSW.DSC_Decoder.UI.AudioInputDialog"
+        Width="320"
+        Height="200"
+        Title="AudioInputDialog">
+  <StackPanel Margin="10" Spacing="10" >
+    <!-- dysplay text : Sleect Audio device input-->
+    <Label Content="Seleziona il dispositivo di input audio:" FontSize="16" Margin="0,0,0,5"/>
+    
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="2">
+      <ComboBox x:Name="DeviceComboBox" Width="180" />
+      <Button Content="OK" Click="OnOkClick"/>
+      <Button Content="Annulla" Click="OnCancelClick"/>
+    </StackPanel>
+  </StackPanel>
+</Window>

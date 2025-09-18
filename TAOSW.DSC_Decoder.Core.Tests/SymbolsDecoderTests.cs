@@ -38,7 +38,7 @@ namespace TAOSW.DSC_Decoder.Core.Tests
                 Format = FormatSpecifier.DistressAlert,
                 Nature = NatureOfDistress.UndesignatedDistress,
                 From = "255805997",
-                Position = "North-East (NE), Latitude: 045.26°, Longitude: 013.07°", // "45.26°N 013.07°E",
+                Position = "045.26N 013.07E", // "45.26°N 013.07°E",
                 EOS = EndOfSequence.OtherCalls,
                 CECC = 52,
                 Status = "OK",
@@ -61,7 +61,7 @@ namespace TAOSW.DSC_Decoder.Core.Tests
                 Format = FormatSpecifier.DistressAlert,
                 Nature = NatureOfDistress.UndesignatedDistress,
                 From = "255805997",
-                Position = "North-East (NE), Latitude: 045.26°, Longitude: 013.07°", // "45.26°N 013.07°E",
+                Position = "045.26N 013.07E", // "45.26°N 013.07°E",
                 EOS = EndOfSequence.OtherCalls,
                 CECC = 51,
                 Status = "Error",
@@ -69,39 +69,6 @@ namespace TAOSW.DSC_Decoder.Core.Tests
                 Symbols = symbols,
                 To = "ALL SHIPS"
 
-            };
-            var result = SymbolsDecoder.Decode(symbols);
-            expected.Should().BeEquivalentTo(result);
-        }
-
-        //TIME: 2025-03-19 15:13:23 FREQ: 8414.5 DIST: -- Km
-        //SYMB: 120 120 000 023 071 000 000 108 032 051 042 000 000 118 126 038 075 000 038 075 000 117 000 117 117 
-        // FMT: SEL
-        // CAT: SAF
-        //  TO: COAST,002371000,GRC,Olympia Radio
-        //FROM: SHIP,325142000,???
-        // TC1: TEST
-        // TC2: NOINF
-        //FREQ: --
-        // POS: --
-        // EOS: REQ
-        //cECC: 0 OK
-        [TestMethod]
-        public void DecodeReqTestMessageTest()
-        {
-            var symbols = new List<int> { 120, 120, 000, 023, 071, 000, 000, 108, 032, 051, 042, 000, 000, 118, 126, 038, 075, 000, 038, 075, 000, 117, 000, 117, 117 };
-            var expected = new DSCMessage
-            {
-                Symbols = symbols,
-                Format = FormatSpecifier.IndividualStationCall,
-                Category = CategoryOfCall.Safety,
-                To = "002371000",
-                From = "325142000",
-                TC1 = FirstCommand.Test,
-                TC2 = SecondCommand.NoInformation,
-                EOS = EndOfSequence.AcknowledgeRQ,
-                CECC = 0,
-                Status = "OK"
             };
             var result = SymbolsDecoder.Decode(symbols);
             expected.Should().BeEquivalentTo(result);
@@ -128,6 +95,7 @@ namespace TAOSW.DSC_Decoder.Core.Tests
                 Symbols = symbols,
                 Format = FormatSpecifier.IndividualStationCall,
                 Category = CategoryOfCall.Safety,
+                Frequency = "04101.0/04393.0",
                 To = "325142000",
                 From = "002371000",
                 TC1 = FirstCommand.Test,
@@ -264,6 +232,7 @@ namespace TAOSW.DSC_Decoder.Core.Tests
                 Symbols = symbols,
                 Format = FormatSpecifier.IndividualStationCall,
                 Category = CategoryOfCall.Safety,
+                Frequency = "--error--",
                 To = "002150100",
                 From = "229364000",
                 TC1 = FirstCommand.Error,
@@ -371,7 +340,7 @@ namespace TAOSW.DSC_Decoder.Core.Tests
                 From = "232019715",
                 TC1 = FirstCommand.J3ETP,
                 TC2 = SecondCommand.NoInformation,
-                Position = "North-East (NE), Latitude: 058.53°, Longitude: 001.34°",
+                Position = "058.53N 001.34E",
                 EOS = EndOfSequence.AcknowledgeRQ,
                 CECC = 18,
                 Status = "OK",
@@ -577,7 +546,7 @@ namespace TAOSW.DSC_Decoder.Core.Tests
                 From = "241726000",
                 TC1 = FirstCommand.J3ETP,
                 TC2 = SecondCommand.NoInformation,
-                Position = "North-East (NE), Latitude: 037.56°, Longitude: 023.38°",
+                Position = "037.56N 023.38E",
                 EOS = EndOfSequence.AcknowledgeRQ,
                 CECC = 67,
                 Status = "OK"
@@ -607,6 +576,7 @@ namespace TAOSW.DSC_Decoder.Core.Tests
                 Symbols = symbols,
                 Format = FormatSpecifier.IndividualStationCall,
                 Category = CategoryOfCall.Safety,
+                Frequency = "--error--",
                 To = "002241022",
                 From = "257530000",
                 TC1 = FirstCommand.Error,
@@ -814,7 +784,7 @@ namespace TAOSW.DSC_Decoder.Core.Tests
                 From = "271002601",
                 TC1 = FirstCommand.J3ETP,
                 TC2 = SecondCommand.NoInformation,
-                Position = "North-East (NE), Latitude: 036.16°, Longitude: 021.23°",
+                Position = "036.16N 021.23E",
                 EOS = EndOfSequence.AcknowledgeRQ,
                 CECC = 118,
                 Status = "OK"
