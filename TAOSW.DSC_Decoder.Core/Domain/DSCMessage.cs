@@ -15,14 +15,14 @@ public class DSCMessage
     public FirstCommand TC1 { get; set; }
     public SecondCommand TC2 { get; set; }
     public string? Position { get; set; }
-    public string Time { get; set; }
+    public DateTimeOffset? Time { get; set; }
     public EndOfSequence EOS { get; set; }
     public int CECC { get; set; }
     public string Status { get; set; }
 
     public DSCMessage()
     {
-        Symbols = new List<int>();
+        Symbols = [];
     }
 
     public override string ToString()

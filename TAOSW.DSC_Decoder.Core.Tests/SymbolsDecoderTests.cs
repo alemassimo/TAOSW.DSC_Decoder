@@ -42,7 +42,8 @@ namespace TAOSW.DSC_Decoder.Core.Tests
                 EOS = EndOfSequence.OtherCalls,
                 CECC = 52,
                 Status = "OK",
-                Time = "12:52",
+                Time = new DateTimeOffset(DateTime.UtcNow.Year, DateTime.UtcNow.Month, DateTime.UtcNow.Day,
+                int.Parse("12"), int.Parse("52"), 0, TimeSpan.Zero),
                 Symbols = symbols,
                 To = "ALL SHIPS"
 
@@ -65,7 +66,8 @@ namespace TAOSW.DSC_Decoder.Core.Tests
                 EOS = EndOfSequence.OtherCalls,
                 CECC = 51,
                 Status = "Error",
-                Time = "12:52",
+                Time = new DateTimeOffset(DateTime.UtcNow.Year, DateTime.UtcNow.Month, DateTime.UtcNow.Day,
+                int.Parse("12"), int.Parse("52"), 0, TimeSpan.Zero),
                 Symbols = symbols,
                 To = "ALL SHIPS"
 

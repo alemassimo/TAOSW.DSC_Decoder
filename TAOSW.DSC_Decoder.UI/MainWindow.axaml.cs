@@ -43,7 +43,7 @@ namespace TAOSW.DSC_Decoder.UI
             var manager = new DscMessageManager(audioCapture, autoTuner, squelchLevelDetector, sampleRate);
             manager.OnClusteredMessageSelected += (message) =>
             {
-                if (string.IsNullOrEmpty(message.Time)) message.Time = DateTime.UtcNow.ToString("MM/dd/yy H:mm:ss");
+                if (message.Time is null) message.Time = DateTimeOffset.UtcNow;
                 Avalonia.Threading.Dispatcher.UIThread.Post(() => _viewModel.AddMessage(message));
                 
                 if ( message.TC1 != FirstCommand.Test)

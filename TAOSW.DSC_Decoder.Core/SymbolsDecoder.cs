@@ -279,7 +279,7 @@ namespace TAOSW.DSC_Decoder.Core
             return mmsi.Remove(mmsi.Length - 1, 1).ToString();
         }
 
-        private static string ExtractTime(IEnumerable<int> input)
+        private static DateTimeOffset? ExtractTime(IEnumerable<int> input)
         {
             if (input == null || input.Count() != 2)
                 throw new ArgumentException("Input must be a list of exactly 2 integers (each representing 2 digits).");
@@ -288,7 +288,12 @@ namespace TAOSW.DSC_Decoder.Core
 
             var hh = digits.Substring(0, 2) == "-1" ? "__" : digits.Substring(0, 2);
             var mm = digits.Substring(2, 2) == "-1" ? "__" : digits.Substring(2, 2);
-            return $"{hh}:{mm}";
+
+            var timeVal = (hh == "__" || mm == "__") ? (DateTimeOffset?)null :
+                new DateTimeOffset(DateTime.UtcNow.Year, DateTime.UtcNow.Month, DateTime.UtcNow.Day,
+                int.Parse(hh), int.Parse(mm), 0, TimeSpan.Zero);
+
+            return timeVal;
         }
 
         // extract posizione 10.10N 20.5E format

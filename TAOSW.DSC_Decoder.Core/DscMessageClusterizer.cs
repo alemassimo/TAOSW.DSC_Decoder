@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using TAOSW.DSC_Decoder.Core.Domain;
-
-public class DscMessageClusterizer
+﻿public class DscMessageClusterizer
 {
     private readonly TimeSpan _timeInterval;
     private readonly List<DSCMessage> _messageBuffer;

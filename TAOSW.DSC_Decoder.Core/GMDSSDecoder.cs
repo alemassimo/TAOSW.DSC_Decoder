@@ -168,10 +168,8 @@ namespace TAOSW.DSC_Decoder.Core
                 {
                     int dataByte = RetriveDataByte(bits, i);
                     Console.Write($"-");
-                    foreach (var item in bits.Skip(i + 7).Take(3))
-                    {
-                        Console.Write(item);
-                    }
+                    foreach (var item in bits.Skip(i + 7).Take(3)) Console.Write(item);
+                    
 
                     bool check = CheckParity(dataByte, bits.Skip(i + 7).Take(3).ToArray());
                     Console.Write($" check: {check}");
@@ -244,7 +242,6 @@ namespace TAOSW.DSC_Decoder.Core
     public class GMDSSDecoderHelper
     {
 
-        // Metodo per trovare la sequenza di sincronizzazione e restituire i bit successivi
         public static IEnumerable<int> ExtractSymbolsFromMessage(IEnumerable<int> byteStream)
         {
             List<int> symbols = new List<int>();
