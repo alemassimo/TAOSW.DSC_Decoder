@@ -134,15 +134,15 @@ namespace TAOSW.DSC_Decoder.UI
             var baseBarWidth = Math.Max(MinBarWidth, Math.Min(MaxBarWidth, canvasWidth / frequencyRange * 10));
 
             // Draw bars
-            foreach (var bar in barData)
+            for (int i = 0; i < barData.Count; i++)
             {
-                DrawBar(bar, canvasWidth, canvasHeight, baseBarWidth);
+                DrawBar(barData[i], canvasWidth, canvasHeight, baseBarWidth);
             }
 
             // Draw Y-axis labels
             DrawYAxisLabels(canvasHeight);
 
-            // Draw X-axis labels
+            // Draw X-axis labels (general scale)
             DrawXAxisLabels(canvasWidth, canvasHeight);
         }
 
@@ -174,8 +174,8 @@ namespace TAOSW.DSC_Decoder.UI
             {
                 var label = new TextBlock
                 {
-                    Text = $"{bar.Frequency:F0}",
-                    FontSize = 10,
+                    Text = $"{bar.Power:F2}",
+                    FontSize = 9,
                     Foreground = new SolidColorBrush(Colors.DarkBlue),
                     Background = new SolidColorBrush(Colors.White) { Opacity = 0.8 }
                 };

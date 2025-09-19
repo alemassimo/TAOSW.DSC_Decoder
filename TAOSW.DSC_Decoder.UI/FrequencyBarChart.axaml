@@ -77,8 +77,8 @@
         <Canvas Grid.Row="1" Grid.Column="1"
                 Name="ChartCanvas" 
                 Background="White"
-                ClipToBounds="True"
-                Margin="10"/>
+                ClipToBounds="False"
+                Margin="10,10,10,25"/>
 
         <!-- X-axis title -->
         <TextBlock Grid.Row="2" Grid.Column="1"

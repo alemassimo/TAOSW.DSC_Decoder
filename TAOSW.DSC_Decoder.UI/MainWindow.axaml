@@ -9,27 +9,27 @@
         MinWidth="800" MinHeight="600">
   
   <Grid x:Name="RootGrid">
-    <Grid.ColumnDefinitions>
-      <ColumnDefinition Width="2*" MinWidth="400"/>
-      <ColumnDefinition Width="5"/>
-      <ColumnDefinition Width="1*" MinWidth="300"/>
-    </Grid.ColumnDefinitions>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="2*" MinHeight="300"/>
+      <RowDefinition Height="5"/>
+      <RowDefinition Height="1*" MinHeight="200"/>
+    </Grid.RowDefinitions>
 
-    <!-- Left panel: DSC Messages -->
-    <Border Grid.Column="0" 
+    <!-- Top: DSC Messages Grid -->
+    <Border Grid.Row="0" 
             BorderBrush="Gray" 
             BorderThickness="1"
             Margin="5">
       <ContentControl x:Name="MessagesContainer"/>
     </Border>
 
-    <!-- Vertical Splitter -->
-    <GridSplitter Grid.Column="1" 
+    <!-- Horizontal Splitter -->
+    <GridSplitter Grid.Row="1" 
                   Background="Gray" 
-                  VerticalAlignment="Stretch"/>
+                  HorizontalAlignment="Stretch"/>
 
-    <!-- Right panel: Frequency Bar Chart -->
-    <Border Grid.Column="2" 
+    <!-- Bottom: Frequency Bar Chart -->
+    <Border Grid.Row="2" 
             BorderBrush="Gray" 
             BorderThickness="1"
             Margin="5">
