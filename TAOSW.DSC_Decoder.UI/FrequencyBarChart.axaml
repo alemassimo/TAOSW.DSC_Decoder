@@ -1,0 +1,133 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:TAOSW.DSC_Decoder.UI"
+             x:Class="TAOSW.DSC_Decoder.UI.FrequencyBarChart"
+             x:DataType="local:FrequencyBarViewModel">
+  
+  <Design.DataContext>
+    <local:FrequencyBarViewModel/>
+  </Design.DataContext>
+
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+      <RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+
+    <!-- Header -->
+    <Border Grid.Row="0" 
+            Background="LightBlue" 
+            Padding="10,5"
+            BorderBrush="DarkBlue" 
+            BorderThickness="0,0,0,2">
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*"/>
+          <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+
+        <TextBlock Grid.Column="0" 
+                   Text="{Binding Title}" 
+                   FontWeight="Bold" 
+                   FontSize="14"
+                   VerticalAlignment="Center"/>
+
+        <StackPanel Grid.Column="1" 
+                    Orientation="Horizontal" 
+                    Spacing="10">
+          <Button Name="ClearButton" 
+                  Content="Clear" 
+                  Padding="8,4"
+                  FontSize="12"
+                  Click="OnClearClicked"/>
+          <Button Name="AutoScaleButton" 
+                  Content="Auto Scale" 
+                  Padding="8,4"
+                  FontSize="12"
+                  Click="OnAutoScaleClicked"/>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <!-- Main chart area -->
+    <Border Grid.Row="1" 
+            Background="White"
+            BorderBrush="Gray"
+            BorderThickness="2"
+            Margin="5">
+      <Grid>
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto"/>
+          <RowDefinition Height="*"/>
+          <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="*"/>
+          <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Y-axis title -->
+        <TextBlock Grid.Row="1" Grid.Column="0"
+                   Text="Power"
+                   VerticalAlignment="Center"
+                   HorizontalAlignment="Center"
+                   FontSize="12"
+                   FontWeight="Bold"
+                   RenderTransform="rotate(-90deg)"
+                   Margin="5,0"/>
+
+        <!-- Chart Canvas -->
+        <Canvas Grid.Row="1" Grid.Column="1"
+                Name="ChartCanvas" 
+                Background="White"
+                ClipToBounds="True"
+                Margin="10"/>
+
+        <!-- X-axis title -->
+        <TextBlock Grid.Row="2" Grid.Column="1"
+                   Text="Frequency (Hz)"
+                   VerticalAlignment="Center"
+                   HorizontalAlignment="Center"
+                   FontSize="12"
+                   FontWeight="Bold"
+                   Margin="0,5"/>
+
+        <!-- Y-axis scale labels -->
+        <StackPanel Grid.Row="1" Grid.Column="2"
+                    Name="YAxisLabels"
+                    VerticalAlignment="Stretch"
+                    HorizontalAlignment="Center"
+                    Margin="5,0"/>
+      </Grid>
+    </Border>
+
+    <!-- Status bar -->
+    <Border Grid.Row="2" 
+            Background="LightGray" 
+            Padding="10,5"
+            BorderBrush="Gray" 
+            BorderThickness="0,2,0,0">
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="*"/>
+          <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+
+        <TextBlock Grid.Column="0" 
+                   Name="StatusText"
+                   Text="Ready" 
+                   VerticalAlignment="Center"
+                   FontSize="12"/>
+
+        <TextBlock Grid.Column="2" 
+                   Name="InfoText"
+                   Text="Range: 0 - 3000 Hz" 
+                   VerticalAlignment="Center"
+                   FontSize="12"/>
+      </Grid>
+    </Border>
+  </Grid>
+</UserControl>

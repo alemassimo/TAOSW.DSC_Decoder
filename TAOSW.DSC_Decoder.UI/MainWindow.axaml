@@ -2,8 +2,38 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        xmlns:local="clr-namespace:TAOSW.DSC_Decoder.UI"
+        mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
         x:Class="TAOSW.DSC_Decoder.UI.MainWindow"
-        Title="TAOSW.DSC_Decoder.UI">
-  <Grid x:Name="RootGrid"/>
+        Title="TAOSW DSC Decoder"
+        MinWidth="800" MinHeight="600">
+  
+  <Grid x:Name="RootGrid">
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="2*" MinWidth="400"/>
+      <ColumnDefinition Width="5"/>
+      <ColumnDefinition Width="1*" MinWidth="300"/>
+    </Grid.ColumnDefinitions>
+
+    <!-- Left panel: DSC Messages -->
+    <Border Grid.Column="0" 
+            BorderBrush="Gray" 
+            BorderThickness="1"
+            Margin="5">
+      <ContentControl x:Name="MessagesContainer"/>
+    </Border>
+
+    <!-- Vertical Splitter -->
+    <GridSplitter Grid.Column="1" 
+                  Background="Gray" 
+                  VerticalAlignment="Stretch"/>
+
+    <!-- Right panel: Frequency Bar Chart -->
+    <Border Grid.Column="2" 
+            BorderBrush="Gray" 
+            BorderThickness="1"
+            Margin="5">
+      <local:FrequencyBarChart x:Name="FrequencyChart"/>
+    </Border>
+  </Grid>
 </Window>

@@ -17,40 +17,73 @@ namespace TAOSW.DSC_Decoder.UI
     {
         private readonly DscMessagesViewModel _viewModel = new();
         private ObservableCollection<AudioDeviceInfo> devices;
+        private FrequencyBarChart _frequencyChart;
+        private DscMessageManager _manager;
+        private FskAutoTuner _autoTuner;
 
         public MainWindow()
         {
             InitializeComponent();
-
-            var gridView = new DscGridView(_viewModel);
-            this.FindControl<Grid>("RootGrid").Children.Add(gridView);
-
+            InitializeControls();
             Task.Run(() => StartDscReceiver());
+        }
+
+        private void InitializeControls()
+        {
+            // Add the DSC messages grid
+            var gridView = new DscGridView(_viewModel);
+            var messagesContainer = this.FindControl<ContentControl>("MessagesContainer");
+            messagesContainer.Content = gridView;
+
+            // Get reference to frequency bar chart
+            _frequencyChart = this.FindControl<FrequencyBarChart>("FrequencyChart");
+            _frequencyChart.SetTitle("FSK Auto-Tuner Frequencies");
+            _frequencyChart.SetFrequencyRange(0, 3000); // 0-3000 Hz as specified
         }
 
         private async Task StartDscReceiver()
         {
             int sampleRate = 88200;
             IAudioCapture audioCapture = new AudioCapture(sampleRate);
-            FskAutoTuner autoTuner = new FskAutoTuner(700, 300, sampleRate, 170);
+            _autoTuner = new FskAutoTuner(3000, 300, sampleRate, 170);
             var squelchLevelDetector = new SquelchLevelDetector(0.0000001f, 0f);
+
+            // Subscribe to frequency detection events from FskAutoTuner
+            _autoTuner.OnFrequenciesDetected += OnFrequenciesDetected;
 
             // Convert List<AudioDeviceInfo> to ObservableCollection<AudioDeviceInfo>
             devices = new ObservableCollection<AudioDeviceInfo>(audioCapture.GetAudioCaptureDevices());
 
-            int deviceNumber = await SelectDeviceFromDialogBox(devices.ToList()); // Convert back to List for dialog box selection
+            int deviceNumber = await SelectDeviceFromDialogBox(devices.ToList());
 
-            var manager = new DscMessageManager(audioCapture, autoTuner, squelchLevelDetector, sampleRate);
-            manager.OnClusteredMessageSelected += (message) =>
+            _manager = new DscMessageManager(audioCapture, _autoTuner, squelchLevelDetector, sampleRate);
+            _manager.OnClusteredMessageSelected += (message) =>
             {
                 if (message.Time is null) message.Time = DateTimeOffset.UtcNow;
                 Avalonia.Threading.Dispatcher.UIThread.Post(() => _viewModel.AddMessage(message));
                 
-                if ( message.TC1 != FirstCommand.Test)
+                if (message.TC1 != FirstCommand.Test)
                     onePing();
-                
             };
-            manager.Start(deviceNumber);
+
+            // Start the DSC manager
+            _manager.Start(deviceNumber);
+        }
+
+        private void OnFrequenciesDetected(IEnumerable<FskAutoTuner.FrequencyClusterPower> frequencies)
+        {
+            // Update frequency bar chart on UI thread
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                try
+                {
+                    _frequencyChart.Draw(frequencies);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error updating frequency chart: {ex.Message}");
+                }
+            });
         }
 
         private void onePing()
@@ -60,7 +93,6 @@ namespace TAOSW.DSC_Decoder.UI
 
         private async Task<int> SelectDeviceFromDialogBox(IEnumerable<AudioDeviceInfo> devices)
         {
-
             AudioDeviceInfo? selectedDevice = await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(async () =>
             {
                 var dialog = new AudioInputDialog(devices);
