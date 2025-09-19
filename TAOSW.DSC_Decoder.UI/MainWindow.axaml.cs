@@ -15,6 +15,8 @@ namespace TAOSW.DSC_Decoder.UI
 {
     public partial class MainWindow : Window
     {
+        private const int MaxDecodeFreq = 700;
+        private const int MinDecodeFreq = 300;
         private readonly DscMessagesViewModel _viewModel = new();
         private ObservableCollection<AudioDeviceInfo> devices;
         private FrequencyBarChart _frequencyChart;
@@ -45,7 +47,7 @@ namespace TAOSW.DSC_Decoder.UI
         {
             int sampleRate = 88200;
             IAudioCapture audioCapture = new AudioCapture(sampleRate);
-            _autoTuner = new FskAutoTuner(3000, 300, sampleRate, 170);
+            _autoTuner = new FskAutoTuner(MaxDecodeFreq, MinDecodeFreq, sampleRate, 170);
             var squelchLevelDetector = new SquelchLevelDetector(0.0000001f, 0f);
 
             // Subscribe to frequency detection events from FskAutoTuner

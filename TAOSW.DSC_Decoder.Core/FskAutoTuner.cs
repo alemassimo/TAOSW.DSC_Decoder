@@ -52,6 +52,9 @@ namespace TAOSW.DSC_Decoder.Core
 
             var peaks = freqs.OrderByDescending(f => f.Power).Take(2).ToList();
 
+            // remove peaks out of range
+            peaks = peaks.Where(p => p.Frequency >= minFreq && p.Frequency <= maxFreq).ToList();
+
             if (peaks.Count < 2) return; 
 
             double f1 = peaks[0].Frequency;
@@ -65,6 +68,7 @@ namespace TAOSW.DSC_Decoder.Core
             if (Math.Abs(peaks[0].Power - peaks[1].Power) < MagnitudeThreshold * Math.Max(peaks[0].Power, peaks[1].Power)) return;
             //if (Math.Abs(autoLeftFreq - lF) <= 25) return; 
             
+
             autoLeftFreq = lF;
             autoRightFreq = rF;
         }
@@ -77,7 +81,6 @@ namespace TAOSW.DSC_Decoder.Core
             for (int i = 0; i < fftSize / 2; i++)
             {
                 float _frequency = (float)i / fftSize * sampleRate;
-                if (_frequency < minFreq || _frequency > maxFreq) continue;
                 double power = fftResult[i].Magnitude;
                 freqs.Add(new FrequencyClusterPower() { Frequency = _frequency, Power = power });
             }
