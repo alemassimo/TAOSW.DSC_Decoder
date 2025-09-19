@@ -1,10 +1,9 @@
 // Copyright (c) 2025 Tao Energy SRL. Licensed under the MIT License.
 
-using System;
 using TAOSW.DSC_Decoder.Core;
 using TAOSW.DSC_Decoder.Core.Interfaces;
-using TAOSW.DSC_Decoder.Core.Domain;
 using TAOSW.DSC_Decoder.Core.TAOSW.DSC_Decoder.Core;
+using static TAOSW.DSC_Decoder.Core.FskAutoTuner;
 
 public class DscMessageManager
 {
@@ -16,6 +15,7 @@ public class DscMessageManager
     private readonly DscMessageClusterizer _dscMessageClusterizer;
 
     public event Action<DSCMessage> OnClusteredMessageSelected;
+    public event Action<IEnumerable<FrequencyClusterPower>> OnFrequenciesDetected;
 
     public DscMessageManager(IAudioCapture audioCapture, FskAutoTuner autoTuner, SquelchLevelDetector squelchLevelDetector, int sampleRate)
     {
@@ -26,6 +26,7 @@ public class DscMessageManager
         _dscDecoder = new DSCDecoder(100, sampleRate);
         _dscMessageClusterizer = new DscMessageClusterizer(new TimeSpan(0, 0, 2));
         _dscMessageClusterizer.OnClusteredMessageSelected += (msg) => OnClusteredMessageSelected?.Invoke(msg);
+        _autoTuner.OnFrequenciesDetected += (freqs) => OnFrequenciesDetected?.Invoke(freqs);
     }
 
     public void Start(int deviceNumber)

@@ -14,6 +14,8 @@ namespace TAOSW.DSC_Decoder.Core
         private readonly int sampleRate;
         private readonly float shift;
 
+        public event Action<IEnumerable<FrequencyClusterPower>> OnFrequenciesDetected;
+
         public FskAutoTuner(float maxFreq, float minFreq, int sampleRate, float shift)
         {
             this.maxFreq = maxFreq;
@@ -45,6 +47,8 @@ namespace TAOSW.DSC_Decoder.Core
             int fftSize = fftResult.Length;
 
             var freqs = ExtractsFrequencies(fftResult, sampleRate);
+
+            OnFrequenciesDetected?.Invoke(freqs);
 
             var peaks = freqs.OrderByDescending(f => f.Power).Take(2).ToList();
 
@@ -80,7 +84,7 @@ namespace TAOSW.DSC_Decoder.Core
             return freqs;
         }
 
-        class FrequencyClusterPower
+        public class FrequencyClusterPower
         {
             public float Frequency { get; set; }
             public double Power { get; set; }
