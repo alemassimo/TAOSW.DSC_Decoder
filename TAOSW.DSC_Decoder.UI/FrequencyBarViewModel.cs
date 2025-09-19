@@ -21,10 +21,12 @@ namespace TAOSW.DSC_Decoder.UI
     {
         private string _title = "Frequency Spectrum";
         private List<FrequencyBarData> _barData = new();
-        private double _maxFrequency = 1000;
+        private double _maxFrequency = 3000;
         private double _minFrequency = 0;
         private double _maxPower = 1.0;
         private int _frequencyStep = 500;
+        private double _minDemodulatorFreq = 0;
+        private double _maxDemodulatorFreq = 0;
 
         public string Title
         {
@@ -82,6 +84,26 @@ namespace TAOSW.DSC_Decoder.UI
             set
             {
                 _frequencyStep = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public double MinDemodulatorFreq
+        {
+            get => _minDemodulatorFreq;
+            set
+            {
+                _minDemodulatorFreq = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public double MaxDemodulatorFreq
+        {
+            get => _maxDemodulatorFreq;
+            set
+            {
+                _maxDemodulatorFreq = value;
                 OnPropertyChanged();
             }
         }
@@ -150,9 +172,24 @@ namespace TAOSW.DSC_Decoder.UI
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
 
+        /// <summary>
+        /// Sets the plot title
+        /// </summary>
+        /// <param name="title">New plot title</param>
         public void SetTitle(string title)
         {
             Title = title;
+        }
+
+        /// <summary>
+        /// Sets the demodulator operating frequency range
+        /// </summary>
+        /// <param name="minFreq">Minimum demodulator frequency</param>
+        /// <param name="maxFreq">Maximum demodulator frequency</param>
+        public void SetDemodulatorRange(double minFreq, double maxFreq)
+        {
+            MinDemodulatorFreq = minFreq;
+            MaxDemodulatorFreq = maxFreq;
         }
 
         public void SetFrequencyRange(double minFrequency, double maxFrequency)

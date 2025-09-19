@@ -92,6 +92,16 @@ namespace TAOSW.DSC_Decoder.UI
         }
 
         /// <summary>
+        /// Sets the demodulator operating frequency range to highlight
+        /// </summary>
+        /// <param name="minDecodeFreq">Minimum demodulator frequency in Hz</param>
+        /// <param name="maxDecodeFreq">Maximum demodulator frequency in Hz</param>
+        public void SetDemodulatorRange(double minDecodeFreq, double maxDecodeFreq)
+        {
+            _viewModel.SetDemodulatorRange(minDecodeFreq, maxDecodeFreq);
+        }
+
+        /// <summary>
         /// Sets the chart title
         /// </summary>
         /// <param name="title">Chart title</param>
@@ -128,6 +138,9 @@ namespace TAOSW.DSC_Decoder.UI
 
             // Draw grid lines first
             DrawGrid(canvasWidth, canvasHeight);
+
+            // Draw demodulator range highlight
+            DrawDemodulatorRange(canvasWidth, canvasHeight);
 
             // Calculate bar width based on frequency density
             var frequencyRange = _viewModel.MaxFrequency - _viewModel.MinFrequency;
@@ -220,6 +233,75 @@ namespace TAOSW.DSC_Decoder.UI
                 };
                 _chartCanvas.Children.Add(line);
             }
+        }
+
+        private void DrawDemodulatorRange(double canvasWidth, double canvasHeight)
+        {
+            if (_chartCanvas == null) return;
+
+            var minDemodFreq = _viewModel.MinDemodulatorFreq;
+            var maxDemodFreq = _viewModel.MaxDemodulatorFreq;
+
+            // Only draw if valid range is set
+            if (minDemodFreq <= 0 || maxDemodFreq <= 0 || minDemodFreq >= maxDemodFreq) return;
+
+            var frequencyRange = _viewModel.MaxFrequency - _viewModel.MinFrequency;
+            
+            // Calculate positions
+            var xStart = Math.Max(0, (minDemodFreq - _viewModel.MinFrequency) / frequencyRange * canvasWidth);
+            var xEnd = Math.Min(canvasWidth, (maxDemodFreq - _viewModel.MinFrequency) / frequencyRange * canvasWidth);
+            
+            if (xStart >= canvasWidth || xEnd <= 0) return; // Range is outside visible area
+
+            // Draw highlighted rectangle
+            var highlightRect = new Rectangle
+            {
+                Width = xEnd - xStart,
+                Height = canvasHeight,
+                Fill = new SolidColorBrush(Colors.Yellow) { Opacity = 0.2 },
+                Stroke = new SolidColorBrush(Colors.Orange),
+                StrokeThickness = 2
+            };
+
+            Canvas.SetLeft(highlightRect, xStart);
+            Canvas.SetTop(highlightRect, 0);
+            _chartCanvas.Children.Add(highlightRect);
+
+            // Add label for demodulator range
+            var labelText = $"Demod: {minDemodFreq:F0}-{maxDemodFreq:F0} Hz";
+            var label = new TextBlock
+            {
+                Text = labelText,
+                FontSize = 11,
+                FontWeight = FontWeight.Bold,
+                Foreground = new SolidColorBrush(Colors.DarkOrange),
+                Background = new SolidColorBrush(Colors.White) { Opacity = 0.9 },
+                Padding = new Avalonia.Thickness(4, 2)
+            };
+
+            // Position label at top of highlighted area
+            Canvas.SetLeft(label, xStart + 5);
+            Canvas.SetTop(label, 5);
+            _chartCanvas.Children.Add(label);
+
+            // Draw vertical lines at boundaries
+            var leftLine = new Line
+            {
+                StartPoint = new Avalonia.Point(xStart, 0),
+                EndPoint = new Avalonia.Point(xStart, canvasHeight),
+                Stroke = new SolidColorBrush(Colors.Orange),
+                StrokeThickness = 2
+            };
+            _chartCanvas.Children.Add(leftLine);
+
+            var rightLine = new Line
+            {
+                StartPoint = new Avalonia.Point(xEnd, 0),
+                EndPoint = new Avalonia.Point(xEnd, canvasHeight),
+                Stroke = new SolidColorBrush(Colors.Orange),
+                StrokeThickness = 2
+            };
+            _chartCanvas.Children.Add(rightLine);
         }
 
         private void DrawYAxisLabels(double canvasHeight)

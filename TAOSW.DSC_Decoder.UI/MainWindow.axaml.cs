@@ -41,6 +41,7 @@ namespace TAOSW.DSC_Decoder.UI
             _frequencyChart = this.FindControl<FrequencyBarChart>("FrequencyChart");
             _frequencyChart.SetTitle("FSK Auto-Tuner Frequencies");
             _frequencyChart.SetFrequencyRange(0, 3000); // 0-3000 Hz as specified
+            _frequencyChart.SetDemodulatorRange(MinDecodeFreq, MaxDecodeFreq); // Highlight demodulator range
         }
 
         private async Task StartDscReceiver()
