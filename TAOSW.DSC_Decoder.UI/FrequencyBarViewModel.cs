@@ -108,7 +108,8 @@ namespace TAOSW.DSC_Decoder.UI
 
             // Find max power for normalization
             var maxPowerValue = freqList.Max(f => f.Power);
-            MaxPower = maxPowerValue > 0 ? maxPowerValue : 1.0;
+            var newMaxPowerValue = maxPowerValue > 0 ? maxPowerValue : 1.0;
+            if (newMaxPowerValue > MaxPower) MaxPower = newMaxPowerValue;
 
             // Filter frequencies within range
             var filteredFreqs = freqList.Where(f => f.Frequency >= MinFrequency && f.Frequency <= MaxFrequency).ToList();
@@ -147,6 +148,22 @@ namespace TAOSW.DSC_Decoder.UI
         protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+
+        public void SetTitle(string title)
+        {
+            Title = title;
+        }
+
+        public void SetFrequencyRange(double minFrequency, double maxFrequency)
+        {
+            MinFrequency = minFrequency;
+            MaxFrequency = maxFrequency;
+        }
+
+        public void Draw(IEnumerable<FskAutoTuner.FrequencyClusterPower> frequencies)
+        {
+            UpdateData(frequencies);
         }
     }
 }

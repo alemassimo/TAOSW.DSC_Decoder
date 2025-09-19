@@ -41,11 +41,6 @@
                   Padding="8,4"
                   FontSize="12"
                   Click="OnClearClicked"/>
-          <Button Name="AutoScaleButton" 
-                  Content="Auto Scale" 
-                  Padding="8,4"
-                  FontSize="12"
-                  Click="OnAutoScaleClicked"/>
         </StackPanel>
       </Grid>
     </Border>
