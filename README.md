@@ -2,7 +2,7 @@
 
 A .NET library for decoding DSC (Digital Selective Calling) messages from audio signals coming from SDR radios or HF receivers with USB (SSB) demodulation.
 
-![TAOSW DSC Decoder GUI](Docs/dsc-decoder-gui.png)
+![TAOSW DSC Decoder GUI](Docs/dsc-decoder-gui2.png)
 
 ## Overview
 
@@ -299,7 +299,7 @@ dotnet test
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-Copyright © 2025 Tao Energy SRL. All rights reserved.
+Copyright ï¿½ 2025 Tao Energy SRL. All rights reserved.
 
 ## Acknowledgments
 
