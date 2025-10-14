@@ -1,6 +1,8 @@
 // Copyright (c) 2025 Tao Energy SRL. Licensed under the MIT License.
 
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
+using Avalonia.Interactivity;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -22,6 +24,10 @@ namespace TAOSW.DSC_Decoder.UI
         private FrequencyBarChart _frequencyChart;
         private DscMessageManager _manager;
         private FskAutoTuner _autoTuner;
+
+        // Sound effects control
+        private bool _soundEffectsEnabled = true;
+        private ToggleButton _soundEffectsToggle;
 
         const string AlarmSoundFilePath = "Sounds/alarm.wav"; 
         const string ErrorSoundFilePath = "Sounds/error.wav"; 
@@ -46,6 +52,13 @@ namespace TAOSW.DSC_Decoder.UI
             _frequencyChart?.SetTitle("FSK Auto-Tuner Frequencies");
             _frequencyChart?.SetFrequencyRange(0, 3000); // 0-3000 Hz as specified
             _frequencyChart?.SetDemodulatorRange(MinDecodeFreq, MaxDecodeFreq); // Highlight demodulator range
+
+            // Get reference to sound effects toggle
+            _soundEffectsToggle = this.FindControl<ToggleButton>("SoundEffectsToggle");
+            if (_soundEffectsToggle != null)
+            {
+                _soundEffectsToggle.IsChecked = _soundEffectsEnabled;
+            }
         }
 
         private async Task StartDscReceiver()
@@ -69,23 +82,25 @@ namespace TAOSW.DSC_Decoder.UI
                 if (message.Time is null) message.Time = DateTimeOffset.UtcNow;
                 Avalonia.Threading.Dispatcher.UIThread.Post(() => _viewModel.AddMessage(message));
 
-                // Play sound based on message type
-                switch (message.Category)
+                // Play sound based on message type only if sound effects are enabled
+                if (_soundEffectsEnabled)
                 {
-                    case CategoryOfCall.Distress:
-                        playSound(AlarmSoundFilePath);
-                        break;
-                    case CategoryOfCall.Error:
-                        playSound(ErrorSoundFilePath);
-                        break;
-                    case CategoryOfCall.Urgency:
-                        playSound(WarningSoundFilePath);
-                        break;
-                    default:
-                        // No sound for other message types
-                        break;
+                    switch (message.Category)
+                    {
+                        case CategoryOfCall.Distress:
+                            playSound(AlarmSoundFilePath);
+                            break;
+                        case CategoryOfCall.Error:
+                            playSound(ErrorSoundFilePath);
+                            break;
+                        case CategoryOfCall.Urgency:
+                            playSound(WarningSoundFilePath);
+                            break;
+                        default:
+                            // No sound for other message types
+                            break;
+                    }
                 }
-
             };
 
             // Start the DSC manager
@@ -117,7 +132,44 @@ namespace TAOSW.DSC_Decoder.UI
             });
         }
 
-        
+        /// <summary>
+        /// Handles the sound effects toggle button click event
+        /// </summary>
+        private void OnSoundEffectsToggled(object? sender, RoutedEventArgs e)
+        {
+            if (sender is ToggleButton toggle)
+            {
+                _soundEffectsEnabled = toggle.IsChecked ?? false;
+                
+                // Provide feedback to user
+                Console.WriteLine($"Sound effects {(_soundEffectsEnabled ? "enabled" : "disabled")}");
+                
+                // Optional: Play a test sound when enabling
+                if (_soundEffectsEnabled)
+                {
+                    // Play a brief test sound to confirm sound is working
+                    Task.Run(() => playSound(WarningSoundFilePath));
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gets the current state of sound effects
+        /// </summary>
+        public bool SoundEffectsEnabled => _soundEffectsEnabled;
+
+        /// <summary>
+        /// Programmatically sets the sound effects state
+        /// </summary>
+        /// <param name="enabled">True to enable sound effects, false to disable</param>
+        public void SetSoundEffects(bool enabled)
+        {
+            _soundEffectsEnabled = enabled;
+            if (_soundEffectsToggle != null)
+            {
+                _soundEffectsToggle.IsChecked = enabled;
+            }
+        }
 
         // method to play a sound from a .wav file
         private void playSound(string filePath)

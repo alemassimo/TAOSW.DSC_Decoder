@@ -10,13 +10,57 @@
   
   <Grid x:Name="RootGrid">
     <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
       <RowDefinition Height="2*" MinHeight="300"/>
       <RowDefinition Height="5"/>
       <RowDefinition Height="1*" MinHeight="200"/>
     </Grid.RowDefinitions>
 
-    <!-- Top: DSC Messages Grid -->
+    <!-- Top: Toolbar -->
     <Border Grid.Row="0" 
+            Background="LightGray" 
+            BorderBrush="Gray" 
+            BorderThickness="0,0,0,1"
+            Padding="10,5">
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="*"/>
+          <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Left side: App title -->
+        <TextBlock Grid.Column="0" 
+                   Text="TAOSW DSC Decoder" 
+                   FontWeight="Bold" 
+                   FontSize="16"
+                   VerticalAlignment="Center"/>
+
+        <!-- Right side: Controls -->
+        <StackPanel Grid.Column="2" 
+                    Orientation="Horizontal" 
+                    Spacing="15"
+                    VerticalAlignment="Center">
+          
+          <!-- Sound Effects Toggle -->
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock Text="Sound Effects:" 
+                       VerticalAlignment="Center"
+                       FontSize="14"/>
+            <ToggleButton x:Name="SoundEffectsToggle"
+                          Classes="SoundToggle"
+                          IsChecked="True"
+                          Width="50"
+                          Height="25"
+                          Click="OnSoundEffectsToggled"
+                          ToolTip.Tip="Enable/Disable sound effects for DSC messages"/>
+          </StackPanel>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <!-- DSC Messages Grid -->
+    <Border Grid.Row="1" 
             BorderBrush="Gray" 
             BorderThickness="1"
             Margin="5">
@@ -24,16 +68,49 @@
     </Border>
 
     <!-- Horizontal Splitter -->
-    <GridSplitter Grid.Row="1" 
+    <GridSplitter Grid.Row="2" 
                   Background="Gray" 
                   HorizontalAlignment="Stretch"/>
 
     <!-- Bottom: Frequency Bar Chart -->
-    <Border Grid.Row="2" 
+    <Border Grid.Row="3" 
             BorderBrush="Gray" 
             BorderThickness="1"
             Margin="5">
       <local:FrequencyBarChart x:Name="FrequencyChart"/>
     </Border>
   </Grid>
+
+  <Window.Resources>
+    <ResourceDictionary>
+      <!-- Converter for ToggleButton content -->
+      <local:BoolToOnOffConverter x:Key="BoolToOnOffConverter"/>
+    </ResourceDictionary>
+  </Window.Resources>
+
+  <Window.Styles>
+    <!-- Custom style for sound toggle button -->
+    <Style Selector="ToggleButton.SoundToggle">
+      <Setter Property="Background" Value="#FF4CAF50"/>
+      <Setter Property="Foreground" Value="White"/>
+      <Setter Property="FontWeight" Value="Bold"/>
+      <Setter Property="FontSize" Value="11"/>
+      <Setter Property="CornerRadius" Value="12"/>
+      <Setter Property="BorderThickness" Value="0"/>
+    </Style>
+    
+    <Style Selector="ToggleButton.SoundToggle:checked">
+      <Setter Property="Background" Value="#FF4CAF50"/>
+      <Setter Property="Content" Value="ON"/>
+    </Style>
+    
+    <Style Selector="ToggleButton.SoundToggle:not(:checked)">
+      <Setter Property="Background" Value="#FF9E9E9E"/>
+      <Setter Property="Content" Value="OFF"/>
+    </Style>
+    
+    <Style Selector="ToggleButton.SoundToggle:pointerover">
+      <Setter Property="Opacity" Value="0.8"/>
+    </Style>
+  </Window.Styles>
 </Window>
