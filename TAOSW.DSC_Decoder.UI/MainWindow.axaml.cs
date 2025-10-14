@@ -3,6 +3,7 @@
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Interactivity;
+using Avalonia.Platform.Storage;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -86,6 +87,12 @@ namespace TAOSW.DSC_Decoder.UI
                 // Play sound based on message type only if sound effects are enabled
                 if (_soundEffectsEnabled)
                 {
+                    if (message.Status.StartsWith("Error"))
+                    {
+                        playSound(ErrorSoundFilePath);
+                        return;
+                    }
+                    
                     switch (message.Category)
                     {
                         case CategoryOfCall.Distress:
@@ -97,12 +104,9 @@ namespace TAOSW.DSC_Decoder.UI
                         case CategoryOfCall.Urgency:
                             playSound(WarningSoundFilePath);
                             break;
-                        case CategoryOfCall.Safety:
-                        case CategoryOfCall.Routine:
-                            playSound(InfoSoundFilePath);
-                            break;
                         default:
                             // No sound for other message types
+                            playSound(InfoSoundFilePath);
                             break;
                     }
                 }
@@ -135,6 +139,68 @@ namespace TAOSW.DSC_Decoder.UI
                     Console.WriteLine($"Error updating frequency chart: {ex.Message}");
                 }
             });
+        }
+
+        /// <summary>
+        /// Handles the Save button click event to export messages to CSV
+        /// </summary>
+        private async void OnSaveButtonClicked(object? sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (_viewModel.Messages.Count == 0)
+                {
+                    await ShowMessageAsync("No Messages", "There are no DSC messages to save.");
+                    return;
+                }
+
+                var storageProvider = GetTopLevel(this)?.StorageProvider;
+                if (storageProvider == null) return;
+
+                var file = await storageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+                {
+                    Title = "Save DSC Messages",
+                    FileTypeChoices = new[]
+                    {
+                        new FilePickerFileType("CSV Files")
+                        {
+                            Patterns = new[] { "*.csv" }
+                        }
+                    },
+                    SuggestedFileName = $"DSC_Messages_{DateTime.Now:yyyy-MM-dd_HH-mm-ss}.csv"
+                });
+
+                if (file != null)
+                {
+                    await _viewModel.SaveToCsvAsync(file.Path.LocalPath);
+                    await ShowMessageAsync("Export Successful", $"Successfully saved {_viewModel.Messages.Count} messages to:\n{file.Path.LocalPath}");
+                }
+            }
+            catch (Exception ex)
+            {
+                await ShowMessageAsync("Export Error", $"Failed to save messages: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Handles the Clear button click event to clear all messages with confirmation
+        /// </summary>
+        private async void OnClearButtonClicked(object? sender, RoutedEventArgs e)
+        {
+            if (_viewModel.Messages.Count == 0)
+            {
+                await ShowMessageAsync("No Messages", "There are no DSC messages to clear.");
+                return;
+            }
+
+            var result = await ShowConfirmationAsync("Confirm Clear", 
+                $"Are you sure you want to clear all {_viewModel.Messages.Count} DSC messages?\n\nThis action cannot be undone.");
+            
+            if (result)
+            {
+                _viewModel.ClearMessages();
+                await ShowMessageAsync("Messages Cleared", "All DSC messages have been cleared successfully.");
+            }
         }
 
         /// <summary>
@@ -174,6 +240,118 @@ namespace TAOSW.DSC_Decoder.UI
             {
                 _soundEffectsToggle.IsChecked = enabled;
             }
+        }
+
+        /// <summary>
+        /// Shows a simple message dialog
+        /// </summary>
+        private async Task ShowMessageAsync(string title, string message)
+        {
+            var dialog = new Window
+            {
+                Title = title,
+                Width = 400,
+                Height = 200,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                CanResize = false,
+                Content = new StackPanel
+                {
+                    Margin = new Avalonia.Thickness(20),
+                    Spacing = 15,
+                    Children =
+                    {
+                        new TextBlock
+                        {
+                            Text = message,
+                            TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                            FontSize = 14
+                        },
+                        new Button
+                        {
+                            Content = "OK",
+                            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                            MinWidth = 80,
+                            Classes = { "ActionButton" }
+                        }
+                    }
+                }
+            };
+
+            if (dialog.Content is StackPanel panel && panel.Children.LastOrDefault() is Button okButton)
+            {
+                okButton.Click += (s, e) => dialog.Close();
+            }
+
+            await dialog.ShowDialog(this);
+        }
+
+        /// <summary>
+        /// Shows a confirmation dialog and returns the user's choice
+        /// </summary>
+        private async Task<bool> ShowConfirmationAsync(string title, string message)
+        {
+            bool result = false;
+            
+            var dialog = new Window
+            {
+                Title = title,
+                Width = 450,
+                Height = 220,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                CanResize = false,
+                Content = new StackPanel
+                {
+                    Margin = new Avalonia.Thickness(20),
+                    Spacing = 15,
+                    Children =
+                    {
+                        new TextBlock
+                        {
+                            Text = message,
+                            TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                            FontSize = 14
+                        },
+                        new StackPanel
+                        {
+                            Orientation = Avalonia.Layout.Orientation.Horizontal,
+                            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                            Spacing = 15,
+                            Children =
+                            {
+                                new Button
+                                {
+                                    Content = "Clear All",
+                                    MinWidth = 100,
+                                    Classes = { "ClearButton" }
+                                },
+                                new Button
+                                {
+                                    Content = "Cancel",
+                                    MinWidth = 100,
+                                    Classes = { "ActionButton" }
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+
+            if (dialog.Content is StackPanel panel && 
+                panel.Children.LastOrDefault() is StackPanel buttonPanel)
+            {
+                if (buttonPanel.Children.FirstOrDefault() is Button clearButton)
+                {
+                    clearButton.Click += (s, e) => { result = true; dialog.Close(); };
+                }
+                
+                if (buttonPanel.Children.LastOrDefault() is Button cancelButton)
+                {
+                    cancelButton.Click += (s, e) => { result = false; dialog.Close(); };
+                }
+            }
+
+            await dialog.ShowDialog(this);
+            return result;
         }
 
         // method to play a sound from a .wav file

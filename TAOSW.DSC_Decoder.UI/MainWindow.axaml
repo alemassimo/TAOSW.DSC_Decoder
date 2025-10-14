@@ -42,6 +42,20 @@
                     Spacing="15"
                     VerticalAlignment="Center">
           
+          <!-- Save Button -->
+          <Button x:Name="SaveButton"
+                  Content="Save CSV"
+                  Classes="ActionButton"
+                  Click="OnSaveButtonClicked"
+                  ToolTip.Tip="Save DSC messages to CSV file"/>
+          
+          <!-- Clear Button -->
+          <Button x:Name="ClearButton"
+                  Content="Clear"
+                  Classes="ClearButton"
+                  Click="OnClearButtonClicked"
+                  ToolTip.Tip="Clear all DSC messages"/>
+          
           <!-- Sound Effects Toggle -->
           <StackPanel Orientation="Horizontal" Spacing="8">
             <TextBlock Text="Sound Effects:" 
@@ -89,6 +103,46 @@
   </Window.Resources>
 
   <Window.Styles>
+    <!-- Custom style for action buttons -->
+    <Style Selector="Button.ActionButton">
+      <Setter Property="Background" Value="#FF2196F3"/>
+      <Setter Property="Foreground" Value="White"/>
+      <Setter Property="FontWeight" Value="Bold"/>
+      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="Padding" Value="10,5"/>
+      <Setter Property="CornerRadius" Value="5"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="MinWidth" Value="80"/>
+    </Style>
+    
+    <Style Selector="Button.ActionButton:pointerover">
+      <Setter Property="Background" Value="#FF1976D2"/>
+    </Style>
+    
+    <Style Selector="Button.ActionButton:pressed">
+      <Setter Property="Background" Value="#FF0D47A1"/>
+    </Style>
+    
+    <!-- Custom style for clear button -->
+    <Style Selector="Button.ClearButton">
+      <Setter Property="Background" Value="#FFF44336"/>
+      <Setter Property="Foreground" Value="White"/>
+      <Setter Property="FontWeight" Value="Bold"/>
+      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="Padding" Value="10,5"/>
+      <Setter Property="CornerRadius" Value="5"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="MinWidth" Value="60"/>
+    </Style>
+    
+    <Style Selector="Button.ClearButton:pointerover">
+      <Setter Property="Background" Value="#FFD32F2F"/>
+    </Style>
+    
+    <Style Selector="Button.ClearButton:pressed">
+      <Setter Property="Background" Value="#FFB71C1C"/>
+    </Style>
+    
     <!-- Custom style for sound toggle button -->
     <Style Selector="ToggleButton.SoundToggle">
       <Setter Property="Background" Value="#FF4CAF50"/>
