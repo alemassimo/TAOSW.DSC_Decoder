@@ -32,6 +32,7 @@ namespace TAOSW.DSC_Decoder.UI
         const string AlarmSoundFilePath = "Sounds/alarm.wav"; 
         const string ErrorSoundFilePath = "Sounds/error.wav"; 
         const string WarningSoundFilePath = "Sounds/warning.wav"; 
+        const string InfoSoundFilePath = "Sounds/bip.wav";
 
         public MainWindow()
         {
@@ -95,6 +96,10 @@ namespace TAOSW.DSC_Decoder.UI
                             break;
                         case CategoryOfCall.Urgency:
                             playSound(WarningSoundFilePath);
+                            break;
+                        case CategoryOfCall.Safety:
+                        case CategoryOfCall.Routine:
+                            playSound(InfoSoundFilePath);
                             break;
                         default:
                             // No sound for other message types
