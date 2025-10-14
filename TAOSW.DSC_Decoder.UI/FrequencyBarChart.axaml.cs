@@ -23,6 +23,10 @@ namespace TAOSW.DSC_Decoder.UI
         private const double MinBarWidth = 2.0;
         private const double MaxBarWidth = 20.0;
 
+        // Store selected frequencies for FSK demodulation
+        private float _selectedLeftFreq = 0;
+        private float _selectedRightFreq = 0;
+
         public FrequencyBarChart()
         {
             InitializeComponent();
@@ -118,6 +122,8 @@ namespace TAOSW.DSC_Decoder.UI
             _viewModel.Clear();
             _chartCanvas?.Children.Clear();
             _yAxisLabels?.Children.Clear();
+            _selectedLeftFreq = 0;
+            _selectedRightFreq = 0;
             UpdateStatus("Chart cleared");
         }
 
@@ -150,6 +156,12 @@ namespace TAOSW.DSC_Decoder.UI
             for (int i = 0; i < barData.Count; i++)
             {
                 DrawBar(barData[i], canvasWidth, canvasHeight, baseBarWidth);
+            }
+
+            // Draw selected frequencies if available
+            if (_selectedLeftFreq > 0 && _selectedRightFreq > 0)
+            {
+                DrawSelectedFrequencies(_selectedLeftFreq, _selectedRightFreq);
             }
 
             // Draw Y-axis labels
@@ -407,6 +419,130 @@ namespace TAOSW.DSC_Decoder.UI
             if (_infoText != null)
             {
                 _infoText.Text = $"Range: {_viewModel.MinFrequency:F0} - {_viewModel.MaxFrequency:F0} Hz";
+            }
+        }
+
+        /// <summary>
+        /// Sets the selected frequencies for FSK demodulation and redraws the chart
+        /// </summary>
+        /// <param name="leftFreq">Left frequency (lower) for FSK demodulation</param>
+        /// <param name="rightFreq">Right frequency (higher) for FSK demodulation</param>
+        public void SetSelectedFrequencies(float leftFreq, float rightFreq)
+        {
+            _selectedLeftFreq = leftFreq;
+            _selectedRightFreq = rightFreq;
+            
+            // Redraw chart to show the selected frequencies
+            DrawChart();
+            
+            UpdateStatus($"FSK frequencies: {leftFreq:F0} / {rightFreq:F0} Hz");
+        }
+
+        /// <summary>
+        /// Clears the selected frequencies
+        /// </summary>
+        public void ClearSelectedFrequencies()
+        {
+            _selectedLeftFreq = 0;
+            _selectedRightFreq = 0;
+            DrawChart();
+            UpdateStatus("FSK frequencies cleared");
+        }
+
+        /// <summary>
+        /// Draws vertical red lines to mark the selected frequencies for DSC decoding
+        /// </summary>
+        /// <param name="leftFreq">Left frequency (lower) for FSK demodulation</param>
+        /// <param name="rightFreq">Right frequency (higher) for FSK demodulation</param>
+        internal void DrawSelectedFrequencies(float leftFreq, float rightFreq)
+        {
+            if (_chartCanvas == null) return;
+
+            var canvasWidth = _chartCanvas.Bounds.Width;
+            var canvasHeight = _chartCanvas.Bounds.Height;
+
+            if (canvasWidth <= 10 || canvasHeight <= 10) return;
+
+            var frequencyRange = _viewModel.MaxFrequency - _viewModel.MinFrequency;
+
+            // Draw left frequency line (lower frequency)
+            if (leftFreq >= _viewModel.MinFrequency && leftFreq <= _viewModel.MaxFrequency)
+            {
+                var xLeft = (leftFreq - _viewModel.MinFrequency) / frequencyRange * canvasWidth;
+
+                var leftLine = new Line
+                {
+                    StartPoint = new Avalonia.Point(xLeft, 0),
+                    EndPoint = new Avalonia.Point(xLeft, canvasHeight),
+                    Stroke = new SolidColorBrush(Colors.Red),
+                    StrokeThickness = 3,
+                    StrokeDashArray = new Avalonia.Collections.AvaloniaList<double> { 5, 3 } // Dashed line
+                };
+                _chartCanvas.Children.Add(leftLine);
+
+                // Add frequency label for left frequency
+                var leftLabel = new TextBlock
+                {
+                    Text = $"{leftFreq:F0} Hz",
+                    FontSize = 10,
+                    FontWeight = FontWeight.Bold,
+                    Foreground = new SolidColorBrush(Colors.Red),
+                    Background = new SolidColorBrush(Colors.White) { Opacity = 0.9 },
+                    Padding = new Avalonia.Thickness(3, 2)
+                };
+
+                Canvas.SetLeft(leftLabel, xLeft + 5);
+                Canvas.SetTop(leftLabel, canvasHeight - 60);
+                _chartCanvas.Children.Add(leftLabel);
+            }
+
+            // Draw right frequency line (higher frequency)
+            if (rightFreq >= _viewModel.MinFrequency && rightFreq <= _viewModel.MaxFrequency)
+            {
+                var xRight = (rightFreq - _viewModel.MinFrequency) / frequencyRange * canvasWidth;
+
+                var rightLine = new Line
+                {
+                    StartPoint = new Avalonia.Point(xRight, 0),
+                    EndPoint = new Avalonia.Point(xRight, canvasHeight),
+                    Stroke = new SolidColorBrush(Colors.Red),
+                    StrokeThickness = 3,
+                    StrokeDashArray = new Avalonia.Collections.AvaloniaList<double> { 5, 3 } // Dashed line
+                };
+                _chartCanvas.Children.Add(rightLine);
+
+                // Add frequency label for right frequency
+                var rightLabel = new TextBlock
+                {
+                    Text = $"{rightFreq:F0} Hz",
+                    FontSize = 10,
+                    FontWeight = FontWeight.Bold,
+                    Foreground = new SolidColorBrush(Colors.Red),
+                    Background = new SolidColorBrush(Colors.White) { Opacity = 0.9 },
+                    Padding = new Avalonia.Thickness(3, 2)
+                };
+
+                Canvas.SetLeft(rightLabel, xRight + 5);
+                Canvas.SetTop(rightLabel, canvasHeight - 40);
+                _chartCanvas.Children.Add(rightLabel);
+            }
+
+            // Add a combined label showing the frequency pair
+            if (leftFreq > 0 && rightFreq > 0)
+            {
+                var pairLabel = new TextBlock
+                {
+                    Text = $"FSK Pair: {leftFreq:F0} / {rightFreq:F0} Hz",
+                    FontSize = 11,
+                    FontWeight = FontWeight.Bold,
+                    Foreground = new SolidColorBrush(Colors.DarkRed),
+                    Background = new SolidColorBrush(Colors.White) { Opacity = 0.9 },
+                    Padding = new Avalonia.Thickness(4, 3)
+                };
+
+                Canvas.SetLeft(pairLabel, 10);
+                Canvas.SetTop(pairLabel, canvasHeight - 25);
+                _chartCanvas.Children.Add(pairLabel);
             }
         }
 

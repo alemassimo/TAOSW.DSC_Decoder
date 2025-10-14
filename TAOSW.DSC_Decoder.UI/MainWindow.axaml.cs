@@ -23,6 +23,10 @@ namespace TAOSW.DSC_Decoder.UI
         private DscMessageManager _manager;
         private FskAutoTuner _autoTuner;
 
+        const string AlarmSoundFilePath = "Sounds/alarm.wav"; 
+        const string ErrorSoundFilePath = "Sounds/error.wav"; 
+        const string WarningSoundFilePath = "Sounds/warning.wav"; 
+
         public MainWindow()
         {
             InitializeComponent();
@@ -35,25 +39,25 @@ namespace TAOSW.DSC_Decoder.UI
             // Add the DSC messages grid
             var gridView = new DscGridView(_viewModel);
             var messagesContainer = this.FindControl<ContentControl>("MessagesContainer");
-            messagesContainer.Content = gridView;
+            messagesContainer!.Content = gridView;
 
             // Get reference to frequency bar chart
             _frequencyChart = this.FindControl<FrequencyBarChart>("FrequencyChart");
-            _frequencyChart.SetTitle("FSK Auto-Tuner Frequencies");
-            _frequencyChart.SetFrequencyRange(0, 3000); // 0-3000 Hz as specified
-            _frequencyChart.SetDemodulatorRange(MinDecodeFreq, MaxDecodeFreq); // Highlight demodulator range
+            _frequencyChart?.SetTitle("FSK Auto-Tuner Frequencies");
+            _frequencyChart?.SetFrequencyRange(0, 3000); // 0-3000 Hz as specified
+            _frequencyChart?.SetDemodulatorRange(MinDecodeFreq, MaxDecodeFreq); // Highlight demodulator range
         }
 
         private async Task StartDscReceiver()
         {
-            int sampleRate = 88200;
+            int sampleRate = 44100; // 88200;
             IAudioCapture audioCapture = new AudioCapture(sampleRate);
             _autoTuner = new FskAutoTuner(MaxDecodeFreq, MinDecodeFreq, sampleRate, 170);
             var squelchLevelDetector = new SquelchLevelDetector(0.0000001f, 0f);
 
             // Subscribe to frequency detection events from FskAutoTuner
             _autoTuner.OnFrequenciesDetected += OnFrequenciesDetected;
-
+            
             // Convert List<AudioDeviceInfo> to ObservableCollection<AudioDeviceInfo>
             devices = new ObservableCollection<AudioDeviceInfo>(audioCapture.GetAudioCaptureDevices());
 
@@ -64,9 +68,24 @@ namespace TAOSW.DSC_Decoder.UI
             {
                 if (message.Time is null) message.Time = DateTimeOffset.UtcNow;
                 Avalonia.Threading.Dispatcher.UIThread.Post(() => _viewModel.AddMessage(message));
-                
-                if (message.TC1 != FirstCommand.Test)
-                    onePing();
+
+                // Play sound based on message type
+                switch (message.Category)
+                {
+                    case CategoryOfCall.Distress:
+                        playSound(AlarmSoundFilePath);
+                        break;
+                    case CategoryOfCall.Error:
+                        playSound(ErrorSoundFilePath);
+                        break;
+                    case CategoryOfCall.Urgency:
+                        playSound(WarningSoundFilePath);
+                        break;
+                    default:
+                        // No sound for other message types
+                        break;
+                }
+
             };
 
             // Start the DSC manager
@@ -81,6 +100,15 @@ namespace TAOSW.DSC_Decoder.UI
                 try
                 {
                     _frequencyChart.Draw(frequencies);
+                    
+                    // Also show the selected frequencies from the auto-tuner
+                    var leftFreq = _autoTuner.LeftFreq;
+                    var rightFreq = _autoTuner.RightFreq;
+                    
+                    if (leftFreq > 0 && rightFreq > 0)
+                    {
+                        _frequencyChart.SetSelectedFrequencies(leftFreq, rightFreq);
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -89,9 +117,23 @@ namespace TAOSW.DSC_Decoder.UI
             });
         }
 
-        private void onePing()
+        
+
+        // method to play a sound from a .wav file
+        private void playSound(string filePath)
         {
-            SystemSounds.Beep.Play();
+            try
+            {
+                using (SoundPlayer player = new SoundPlayer(filePath))
+                {
+                    player.Load();
+                    player.Play();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error playing sound: {ex.Message}");
+            }
         }
 
         private async Task<int> SelectDeviceFromDialogBox(IEnumerable<AudioDeviceInfo> devices)
