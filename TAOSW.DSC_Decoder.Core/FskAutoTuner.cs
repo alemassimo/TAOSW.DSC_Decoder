@@ -9,12 +9,12 @@ namespace TAOSW.DSC_Decoder.Core
         private readonly Queue<float[]> signalBuffer = new();
         private float autoLeftFreq;
         private float autoRightFreq;
-        private readonly float maxFreq;
-        private readonly float minFreq;
+        private float maxFreq;
+        private float minFreq;
         private readonly int sampleRate;
         private readonly float shift;
 
-        public event Action<IEnumerable<FrequencyClusterPower>> OnFrequenciesDetected;
+        public event Action<IEnumerable<FrequencyClusterPower>>? OnFrequenciesDetected;
 
         public FskAutoTuner(float maxFreq, float minFreq, int sampleRate, float shift)
         {
@@ -24,8 +24,15 @@ namespace TAOSW.DSC_Decoder.Core
             this.shift = shift;
         }
 
-        public float LeftFreq => autoLeftFreq;
-        public float RightFreq => autoRightFreq;
+        public void SetFrequencyRange(float maxFreq, float minFreq)
+        {
+            this.maxFreq = maxFreq;
+            this.minFreq = minFreq;
+        }
+
+        public bool IsTuned => autoLeftFreq != 0 && autoRightFreq != 0;
+        public float LeftFreq { get => autoLeftFreq; }
+        public float RightFreq { get => autoRightFreq; }
 
         public float[] ProcessSignal(float[] signal)
         {

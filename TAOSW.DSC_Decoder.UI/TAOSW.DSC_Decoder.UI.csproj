@@ -27,4 +27,19 @@
     <ProjectReference Include="..\Gateways\Gateways.csproj" />
     <ProjectReference Include="..\TAOSW.DSC_Decoder.Core\TAOSW.DSC_Decoder.Core.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Sounds\alarm.wav">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Sounds\bip.wav">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Sounds\error.wav">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Sounds\warning.wav">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
 </Project>
