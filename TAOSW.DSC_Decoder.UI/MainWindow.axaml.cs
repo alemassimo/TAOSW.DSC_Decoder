@@ -7,6 +7,7 @@ using Avalonia.Platform.Storage;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
 using System.Media;
 using System.Threading.Tasks;
@@ -39,6 +40,10 @@ namespace TAOSW.DSC_Decoder.UI
         {
             InitializeComponent();
             InitializeControls();
+            
+            // Handle window closing to cleanup resources
+            this.Closing += OnWindowClosing;
+            
             Task.Run(() => StartDscReceiver());
         }
 
@@ -65,55 +70,150 @@ namespace TAOSW.DSC_Decoder.UI
 
         private async Task StartDscReceiver()
         {
-            int sampleRate = 44100; // 88200;
-            IAudioCapture audioCapture = new AudioCapture(sampleRate);
-            _autoTuner = new FskAutoTuner(MaxDecodeFreq, MinDecodeFreq, sampleRate, 170);
-            var squelchLevelDetector = new SquelchLevelDetector(0.0000001f, 0f);
-
-            // Subscribe to frequency detection events from FskAutoTuner
-            _autoTuner.OnFrequenciesDetected += OnFrequenciesDetected;
-            
-            // Convert List<AudioDeviceInfo> to ObservableCollection<AudioDeviceInfo>
-            devices = new ObservableCollection<AudioDeviceInfo>(audioCapture.GetAudioCaptureDevices());
-
-            int deviceNumber = await SelectDeviceFromDialogBox(devices.ToList());
-
-            _manager = new DscMessageManager(audioCapture, _autoTuner, squelchLevelDetector, sampleRate);
-            _manager.OnClusteredMessageSelected += (message) =>
+            try
             {
-                if (message.Time is null) message.Time = DateTimeOffset.UtcNow;
-                Avalonia.Threading.Dispatcher.UIThread.Post(() => _viewModel.AddMessage(message));
+                int sampleRate = 44100; // 88200;
+                IAudioCapture audioCapture = new AudioCapture(sampleRate);
+                _autoTuner = new FskAutoTuner(MaxDecodeFreq, MinDecodeFreq, sampleRate, 170);
+                var squelchLevelDetector = new SquelchLevelDetector(0.0000001f, 0f);
 
-                // Play sound based on message type only if sound effects are enabled
-                if (_soundEffectsEnabled)
+                // Subscribe to frequency detection events from FskAutoTuner
+                _autoTuner.OnFrequenciesDetected += OnFrequenciesDetected;
+                
+                // Convert List<AudioDeviceInfo> to ObservableCollection<AudioDeviceInfo>
+                devices = new ObservableCollection<AudioDeviceInfo>(audioCapture.GetAudioCaptureDevices());
+
+                if (devices.Count == 0)
                 {
-                    if (message.Status.StartsWith("Error"))
+                    await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(async () =>
                     {
-                        playSound(ErrorSoundFilePath);
-                        return;
-                    }
-                    
-                    switch (message.Category)
-                    {
-                        case CategoryOfCall.Distress:
-                            playSound(AlarmSoundFilePath);
-                            break;
-                        case CategoryOfCall.Error:
-                            playSound(ErrorSoundFilePath);
-                            break;
-                        case CategoryOfCall.Urgency:
-                            playSound(WarningSoundFilePath);
-                            break;
-                        default:
-                            // No sound for other message types
-                            playSound(InfoSoundFilePath);
-                            break;
-                    }
+                        await ShowMessageAsync("No Audio Devices", "No audio capture devices were found. Please check your audio hardware and try again.");
+                    });
+                    return;
                 }
-            };
 
-            // Start the DSC manager
-            _manager.Start(deviceNumber);
+                int deviceNumber = await SelectDeviceFromDialogBox(devices.ToList());
+
+                _manager = new DscMessageManager(audioCapture, _autoTuner, squelchLevelDetector, sampleRate);
+                
+                // Subscribe to error and status events for better monitoring
+                _manager.OnError += (error) =>
+                {
+                    Console.WriteLine($"DSC Manager Error: {error}");
+                    Avalonia.Threading.Dispatcher.UIThread.Post(async () =>
+                    {
+                        await ShowMessageAsync("DSC Processing Error", $"An error occurred during DSC processing:\n{error}");
+                    });
+                };
+
+                _manager.OnStatusChanged += (status) =>
+                {
+                    Console.WriteLine($"DSC Manager Status: {status}");
+                };
+
+                // Subscribe to audio capture events if it's our AudioCapture implementation
+                if (audioCapture is AudioCapture audioCaptureImpl)
+                {
+                    audioCaptureImpl.OnError += (error) =>
+                    {
+                        Console.WriteLine($"Audio Capture Error: {error}");
+                        Avalonia.Threading.Dispatcher.UIThread.Post(async () =>
+                        {
+                            await ShowMessageAsync("Audio Capture Error", $"An error occurred with audio capture:\n{error}");
+                        });
+                    };
+
+                    audioCaptureImpl.OnStatusChanged += (status) =>
+                    {
+                        Console.WriteLine($"Audio Capture Status: {status}");
+                    };
+                }
+
+                _manager.OnClusteredMessageSelected += (message) =>
+                {
+                    try
+                    {
+                        if (message.Time is null) message.Time = DateTimeOffset.UtcNow;
+                        Avalonia.Threading.Dispatcher.UIThread.Post(() => _viewModel.AddMessage(message));
+
+                        // Play sound based on message type only if sound effects are enabled
+                        if (_soundEffectsEnabled)
+                        {
+                            switch (message.Category)
+                            {
+                                case CategoryOfCall.Distress:
+                                    Task.Run(() => playSound(AlarmSoundFilePath));
+                                    break;
+                                case CategoryOfCall.Error:
+                                    Task.Run(() => playSound(ErrorSoundFilePath));
+                                    break;
+                                case CategoryOfCall.Urgency:
+                                    Task.Run(() => playSound(WarningSoundFilePath));
+                                    break;
+                                default:
+                                    Task.Run(() => playSound(InfoSoundFilePath));
+                                    break;
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error processing message: {ex.Message}");
+                    }
+                };
+
+                // Start the DSC manager with error handling
+                try
+                {
+                    _manager.Start(deviceNumber);
+                    
+                    // Monitor manager health periodically
+                    _ = Task.Run(async () =>
+                    {
+                        while (_manager?.IsRunning == true)
+                        {
+                            await Task.Delay(TimeSpan.FromSeconds(30));
+                            
+                            // Check health of both manager and audio capture
+                            bool managerHealthy = _manager?.IsHealthy() == true;
+                            bool audioCaptureHealthy = true;
+                            
+                            if (audioCapture is AudioCapture audioCaptureImpl)
+                            {
+                                audioCaptureHealthy = audioCaptureImpl.IsHealthy();
+                            }
+                            
+                            if (!managerHealthy || !audioCaptureHealthy)
+                            {
+                                Console.WriteLine("Health check failed - attempting restart");
+                                await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(async () =>
+                                {
+                                    await ShowMessageAsync("Audio Processing Issue", 
+                                        "Audio processing has encountered issues. The system will attempt to recover automatically.");
+                                });
+                                break;
+                            }
+                        }
+                    });
+                }
+                catch (Exception ex)
+                {
+                    await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(async () =>
+                    {
+                        await ShowMessageAsync("Startup Error", 
+                            $"Failed to start DSC receiver:\n{ex.Message}\n\nPlease check your audio device and try again.");
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Fatal error in StartDscReceiver: {ex.Message}");
+                await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(async () =>
+                {
+                    await ShowMessageAsync("Critical Error", 
+                        $"A critical error occurred during initialization:\n{ex.Message}");
+                });
+            }
         }
 
         private void OnFrequenciesDetected(IEnumerable<FskAutoTuner.FrequencyClusterPower> frequencies)
@@ -355,19 +455,49 @@ namespace TAOSW.DSC_Decoder.UI
         }
 
         // method to play a sound from a .wav file
-        private void playSound(string filePath)
+        private async void playSound(string filePath)
         {
             try
             {
-                using (SoundPlayer player = new SoundPlayer(filePath))
+                if (!_soundEffectsEnabled)
+                    return;
+
+                // Check if file exists
+                if (!File.Exists(filePath))
                 {
-                    player.Load();
-                    player.Play();
+                    Console.WriteLine($"Sound file not found: {filePath}");
+                    return;
                 }
+
+                // Use Task.Run to avoid blocking the UI thread
+                await Task.Run(() =>
+                {
+                    try
+                    {
+                        using (SoundPlayer player = new SoundPlayer(filePath))
+                        {
+                            player.LoadTimeout = 5000; // 5 second timeout
+                            player.Load();
+                            player.Play();
+                        }
+                    }
+                    catch (TimeoutException)
+                    {
+                        Console.WriteLine($"Timeout loading sound file: {filePath}");
+                    }
+                    catch (InvalidOperationException ex)
+                    {
+                        Console.WriteLine($"Invalid sound file format {filePath}: {ex.Message}");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error playing sound {filePath}: {ex.Message}");
+                    }
+                });
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error playing sound: {ex.Message}");
+                Console.WriteLine($"Unexpected error in playSound: {ex.Message}");
             }
         }
 
@@ -380,6 +510,22 @@ namespace TAOSW.DSC_Decoder.UI
             });
 
             return selectedDevice?.DeviceNumber ?? 0; 
+        }
+
+        private void OnWindowClosing(object? sender, WindowClosingEventArgs e)
+        {
+            try
+            {
+                // Stop the DSC manager gracefully
+                _manager?.Stop();
+                _manager?.Dispose();
+                
+                Console.WriteLine("Application resources cleaned up successfully");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error during cleanup: {ex.Message}");
+            }
         }
     }
 }
