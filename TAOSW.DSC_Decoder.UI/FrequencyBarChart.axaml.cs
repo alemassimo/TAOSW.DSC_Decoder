@@ -142,32 +142,24 @@ namespace TAOSW.DSC_Decoder.UI
             var barData = _viewModel.BarData;
             if (!barData.Any()) return;
 
-            // Draw grid lines first
             DrawGrid(canvasWidth, canvasHeight);
-
-            // Draw demodulator range highlight
             DrawDemodulatorRange(canvasWidth, canvasHeight);
 
-            // Calculate bar width based on frequency density
             var frequencyRange = _viewModel.MaxFrequency - _viewModel.MinFrequency;
             var baseBarWidth = Math.Max(MinBarWidth, Math.Min(MaxBarWidth, canvasWidth / frequencyRange * 10));
 
-            // Draw bars
             for (int i = 0; i < barData.Count; i++)
             {
                 DrawBar(barData[i], canvasWidth, canvasHeight, baseBarWidth);
             }
 
-            // Draw selected frequencies if available
             if (_selectedLeftFreq > 0 && _selectedRightFreq > 0)
             {
                 DrawSelectedFrequencies(_selectedLeftFreq, _selectedRightFreq);
             }
 
-            // Draw Y-axis labels
             DrawYAxisLabels(canvasHeight);
 
-            // Draw X-axis labels (general scale)
             DrawXAxisLabels(canvasWidth, canvasHeight);
         }
 
@@ -180,7 +172,6 @@ namespace TAOSW.DSC_Decoder.UI
             var barHeight = bar.NormalizedHeight * canvasHeight * 0.9; // 90% of canvas height
             var y = canvasHeight - barHeight;
 
-            // Create bar rectangle
             var rect = new Rectangle
             {
                 Width = barWidth,
@@ -217,7 +208,6 @@ namespace TAOSW.DSC_Decoder.UI
 
             var gridBrush = new SolidColorBrush(Colors.LightGray) { Opacity = 0.5 };
 
-            // Vertical grid lines (frequency)
             var frequencyStep = (_viewModel.MaxFrequency - _viewModel.MinFrequency) / 10;
             for (int i = 1; i < 10; i++)
             {
@@ -232,7 +222,6 @@ namespace TAOSW.DSC_Decoder.UI
                 _chartCanvas.Children.Add(line);
             }
 
-            // Horizontal grid lines (power)
             for (int i = 1; i < 10; i++)
             {
                 var y = (i * canvasHeight) / 10;
@@ -259,13 +248,11 @@ namespace TAOSW.DSC_Decoder.UI
 
             var frequencyRange = _viewModel.MaxFrequency - _viewModel.MinFrequency;
             
-            // Calculate positions
             var xStart = Math.Max(0, (minDemodFreq - _viewModel.MinFrequency) / frequencyRange * canvasWidth);
             var xEnd = Math.Min(canvasWidth, (maxDemodFreq - _viewModel.MinFrequency) / frequencyRange * canvasWidth);
             
             if (xStart >= canvasWidth || xEnd <= 0) return; // Range is outside visible area
 
-            // Draw highlighted rectangle
             var highlightRect = new Rectangle
             {
                 Width = xEnd - xStart,
@@ -279,7 +266,6 @@ namespace TAOSW.DSC_Decoder.UI
             Canvas.SetTop(highlightRect, 0);
             _chartCanvas.Children.Add(highlightRect);
 
-            // Add label for demodulator range
             var labelText = $"Demod: {minDemodFreq:F0}-{maxDemodFreq:F0} Hz";
             var label = new TextBlock
             {
@@ -291,12 +277,10 @@ namespace TAOSW.DSC_Decoder.UI
                 Padding = new Avalonia.Thickness(4, 2)
             };
 
-            // Position label at top of highlighted area
             Canvas.SetLeft(label, xStart + 5);
             Canvas.SetTop(label, 5);
             _chartCanvas.Children.Add(label);
 
-            // Draw vertical lines at boundaries
             var leftLine = new Line
             {
                 StartPoint = new Avalonia.Point(xStart, 0),
@@ -369,7 +353,6 @@ namespace TAOSW.DSC_Decoder.UI
         {
             var intensity = maxPower > 0 ? power / maxPower : 0;
 
-            // Color gradient from blue (low) to red (high)
             if (intensity < 0.3)
                 return new SolidColorBrush(Colors.LightBlue);
             else if (intensity < 0.6)
@@ -432,7 +415,6 @@ namespace TAOSW.DSC_Decoder.UI
             _selectedLeftFreq = leftFreq;
             _selectedRightFreq = rightFreq;
             
-            // Redraw chart to show the selected frequencies
             DrawChart();
             
             UpdateStatus($"FSK frequencies: {leftFreq:F0} / {rightFreq:F0} Hz");
@@ -465,7 +447,6 @@ namespace TAOSW.DSC_Decoder.UI
 
             var frequencyRange = _viewModel.MaxFrequency - _viewModel.MinFrequency;
 
-            // Draw left frequency line (lower frequency)
             if (leftFreq >= _viewModel.MinFrequency && leftFreq <= _viewModel.MaxFrequency)
             {
                 var xLeft = (leftFreq - _viewModel.MinFrequency) / frequencyRange * canvasWidth;
@@ -480,7 +461,6 @@ namespace TAOSW.DSC_Decoder.UI
                 };
                 _chartCanvas.Children.Add(leftLine);
 
-                // Add frequency label for left frequency
                 var leftLabel = new TextBlock
                 {
                     Text = $"{leftFreq:F0} Hz",
@@ -496,7 +476,6 @@ namespace TAOSW.DSC_Decoder.UI
                 _chartCanvas.Children.Add(leftLabel);
             }
 
-            // Draw right frequency line (higher frequency)
             if (rightFreq >= _viewModel.MinFrequency && rightFreq <= _viewModel.MaxFrequency)
             {
                 var xRight = (rightFreq - _viewModel.MinFrequency) / frequencyRange * canvasWidth;
@@ -511,7 +490,6 @@ namespace TAOSW.DSC_Decoder.UI
                 };
                 _chartCanvas.Children.Add(rightLine);
 
-                // Add frequency label for right frequency
                 var rightLabel = new TextBlock
                 {
                     Text = $"{rightFreq:F0} Hz",
@@ -527,7 +505,6 @@ namespace TAOSW.DSC_Decoder.UI
                 _chartCanvas.Children.Add(rightLabel);
             }
 
-            // Add a combined label showing the frequency pair
             if (leftFreq > 0 && rightFreq > 0)
             {
                 var pairLabel = new TextBlock

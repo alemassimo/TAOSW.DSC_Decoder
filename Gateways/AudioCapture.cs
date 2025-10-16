@@ -17,7 +17,6 @@ public class AudioCapture : IAudioCapture, IDisposable
     private volatile bool _isRecording = false;
     private readonly object _lockObject = new object();
     
-    // Error tracking and recovery
     private int _consecutiveErrors = 0;
     private const int MaxConsecutiveErrors = 5;
     private DateTime _lastErrorTime = DateTime.MinValue;
@@ -47,7 +46,6 @@ public class AudioCapture : IAudioCapture, IDisposable
                 catch (Exception ex)
                 {
                     Console.WriteLine($"Error getting device {i} capabilities: {ex.Message}");
-                    // Continue with other devices
                 }
             }
             return devices;
@@ -129,14 +127,12 @@ public class AudioCapture : IAudioCapture, IDisposable
                     return;
                 }
 
-                // Validate device number
                 if (deviceNumber < 0 || deviceNumber >= WaveInEvent.DeviceCount)
                 {
                     throw new ArgumentOutOfRangeException(nameof(deviceNumber), 
                         $"Device number {deviceNumber} is out of range. Available devices: 0-{WaveInEvent.DeviceCount - 1}");
                 }
 
-                // Create new WaveInEvent with error handling
                 waveIn = new WaveInEvent
                 {
                     DeviceNumber = deviceNumber,
@@ -144,18 +140,15 @@ public class AudioCapture : IAudioCapture, IDisposable
                     BufferMilliseconds = 100 // Reduce buffer size for lower latency
                 };
 
-                // Configure buffered wave provider with appropriate buffer size
                 bufferedWaveProvider = new BufferedWaveProvider(waveIn.WaveFormat)
                 {
                     BufferLength = _sampleRate * 2 * 5, // 5 seconds buffer
                     DiscardOnBufferOverflow = true // Prevent memory buildup
                 };
 
-                // Add comprehensive event handlers
                 waveIn.DataAvailable += OnDataAvailable;
                 waveIn.RecordingStopped += OnRecordingStopped;
 
-                // Start recording
                 waveIn.StartRecording();
                 _isRecording = true;
                 
@@ -292,11 +285,9 @@ public class AudioCapture : IAudioCapture, IDisposable
 
             waveFileReader = new WaveFileReader(filePath);
             
-            // Check file format compatibility
             if (waveFileReader.WaveFormat.SampleRate != _sampleRate)
-            {
                 Console.WriteLine($"Warning: File sample rate ({waveFileReader.WaveFormat.SampleRate}) differs from expected ({_sampleRate})");
-            }
+            
 
             audioFileBuffer = new Memory<byte>(new byte[waveFileReader.Length]);
             await waveFileReader.ReadAsync(audioFileBuffer);

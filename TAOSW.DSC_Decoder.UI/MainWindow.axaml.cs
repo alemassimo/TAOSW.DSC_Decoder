@@ -27,7 +27,6 @@ namespace TAOSW.DSC_Decoder.UI
         private DscMessageManager _manager;
         private FskAutoTuner _autoTuner;
 
-        // Sound effects control
         private bool _soundEffectsEnabled = true;
         private ToggleButton _soundEffectsToggle;
 
@@ -41,7 +40,6 @@ namespace TAOSW.DSC_Decoder.UI
             InitializeComponent();
             InitializeControls();
             
-            // Handle window closing to cleanup resources
             this.Closing += OnWindowClosing;
             
             Task.Run(() => StartDscReceiver());
@@ -49,18 +47,15 @@ namespace TAOSW.DSC_Decoder.UI
 
         private void InitializeControls()
         {
-            // Add the DSC messages grid
             var gridView = new DscGridView(_viewModel);
             var messagesContainer = this.FindControl<ContentControl>("MessagesContainer");
             messagesContainer!.Content = gridView;
 
-            // Get reference to frequency bar chart
             _frequencyChart = this.FindControl<FrequencyBarChart>("FrequencyChart");
             _frequencyChart?.SetTitle("FSK Auto-Tuner Frequencies");
             _frequencyChart?.SetFrequencyRange(0, 3000); // 0-3000 Hz as specified
             _frequencyChart?.SetDemodulatorRange(MinDecodeFreq, MaxDecodeFreq); // Highlight demodulator range
 
-            // Get reference to sound effects toggle
             _soundEffectsToggle = this.FindControl<ToggleButton>("SoundEffectsToggle");
             if (_soundEffectsToggle != null)
             {
@@ -77,10 +72,8 @@ namespace TAOSW.DSC_Decoder.UI
                 _autoTuner = new FskAutoTuner(MaxDecodeFreq, MinDecodeFreq, sampleRate, 170);
                 var squelchLevelDetector = new SquelchLevelDetector(0.0000001f, 0f);
 
-                // Subscribe to frequency detection events from FskAutoTuner
                 _autoTuner.OnFrequenciesDetected += OnFrequenciesDetected;
                 
-                // Convert List<AudioDeviceInfo> to ObservableCollection<AudioDeviceInfo>
                 devices = new ObservableCollection<AudioDeviceInfo>(audioCapture.GetAudioCaptureDevices());
 
                 if (devices.Count == 0)
@@ -96,7 +89,6 @@ namespace TAOSW.DSC_Decoder.UI
 
                 _manager = new DscMessageManager(audioCapture, _autoTuner, squelchLevelDetector, sampleRate);
                 
-                // Subscribe to error and status events for better monitoring
                 _manager.OnError += (error) =>
                 {
                     Console.WriteLine($"DSC Manager Error: {error}");
@@ -111,7 +103,6 @@ namespace TAOSW.DSC_Decoder.UI
                     Console.WriteLine($"DSC Manager Status: {status}");
                 };
 
-                // Subscribe to audio capture events if it's our AudioCapture implementation
                 if (audioCapture is AudioCapture audioCaptureImpl)
                 {
                     audioCaptureImpl.OnError += (error) =>
@@ -136,8 +127,7 @@ namespace TAOSW.DSC_Decoder.UI
                         if (message.Time is null) message.Time = DateTimeOffset.UtcNow;
                         Avalonia.Threading.Dispatcher.UIThread.Post(() => _viewModel.AddMessage(message));
 
-                        // Play sound based on message type only if sound effects are enabled
-                        if (_soundEffectsEnabled)
+                       if (_soundEffectsEnabled)
                         {
                             switch (message.Category)
                             {
@@ -162,19 +152,16 @@ namespace TAOSW.DSC_Decoder.UI
                     }
                 };
 
-                // Start the DSC manager with error handling
                 try
                 {
                     _manager.Start(deviceNumber);
                     
-                    // Monitor manager health periodically
                     _ = Task.Run(async () =>
                     {
                         while (_manager?.IsRunning == true)
                         {
                             await Task.Delay(TimeSpan.FromSeconds(30));
                             
-                            // Check health of both manager and audio capture
                             bool managerHealthy = _manager?.IsHealthy() == true;
                             bool audioCaptureHealthy = true;
                             
@@ -218,14 +205,12 @@ namespace TAOSW.DSC_Decoder.UI
 
         private void OnFrequenciesDetected(IEnumerable<FskAutoTuner.FrequencyClusterPower> frequencies)
         {
-            // Update frequency bar chart on UI thread
             Avalonia.Threading.Dispatcher.UIThread.Post(() =>
             {
                 try
                 {
                     _frequencyChart.Draw(frequencies);
                     
-                    // Also show the selected frequencies from the auto-tuner
                     var leftFreq = _autoTuner.LeftFreq;
                     var rightFreq = _autoTuner.RightFreq;
                     
@@ -312,15 +297,10 @@ namespace TAOSW.DSC_Decoder.UI
             {
                 _soundEffectsEnabled = toggle.IsChecked ?? false;
                 
-                // Provide feedback to user
                 Console.WriteLine($"Sound effects {(_soundEffectsEnabled ? "enabled" : "disabled")}");
                 
-                // Optional: Play a test sound when enabling
-                if (_soundEffectsEnabled)
-                {
-                    // Play a brief test sound to confirm sound is working
-                    Task.Run(() => playSound(WarningSoundFilePath));
-                }
+                if (_soundEffectsEnabled)Task.Run(() => playSound(WarningSoundFilePath));
+                
             }
         }
 
@@ -454,7 +434,6 @@ namespace TAOSW.DSC_Decoder.UI
             return result;
         }
 
-        // method to play a sound from a .wav file
         private async void playSound(string filePath)
         {
             try
@@ -462,21 +441,19 @@ namespace TAOSW.DSC_Decoder.UI
                 if (!_soundEffectsEnabled)
                     return;
 
-                // Check if file exists
                 if (!File.Exists(filePath))
                 {
                     Console.WriteLine($"Sound file not found: {filePath}");
                     return;
                 }
 
-                // Use Task.Run to avoid blocking the UI thread
                 await Task.Run(() =>
                 {
                     try
                     {
                         using (SoundPlayer player = new SoundPlayer(filePath))
                         {
-                            player.LoadTimeout = 5000; // 5 second timeout
+                            player.LoadTimeout = 5000; 
                             player.Load();
                             player.Play();
                         }
@@ -516,7 +493,6 @@ namespace TAOSW.DSC_Decoder.UI
         {
             try
             {
-                // Stop the DSC manager gracefully
                 _manager?.Stop();
                 _manager?.Dispose();
                 
