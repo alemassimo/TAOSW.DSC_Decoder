@@ -20,9 +20,11 @@ namespace TAOSW.DSC_Decoder.UI
         private TextBlock? _statusText;
         private TextBlock? _infoText;
         private ToggleSwitch? _autoTuningToggle;
+        private TextBlock? _currentFreqDisplay;
 
         private const double MinBarWidth = 2.0;
         private const double MaxBarWidth = 20.0;
+        private const float FrequencyIncrement = 5.0f; // Hz per step
 
         // Store selected frequencies for FSK demodulation
         private float _selectedLeftFreq = 0;
@@ -30,6 +32,9 @@ namespace TAOSW.DSC_Decoder.UI
 
         // Event to notify when auto-tuning state changes
         public event EventHandler<bool>? AutoTuningChanged;
+        
+        // Event to notify when manual frequency adjustment is requested
+        public event EventHandler<float>? ManualFrequencyAdjustmentRequested;
 
         public FrequencyBarChart()
         {
@@ -52,6 +57,7 @@ namespace TAOSW.DSC_Decoder.UI
             _statusText = this.FindControl<TextBlock>("StatusText");
             _infoText = this.FindControl<TextBlock>("InfoText");
             _autoTuningToggle = this.FindControl<ToggleSwitch>("AutoTuningToggle");
+            _currentFreqDisplay = this.FindControl<TextBlock>("CurrentFreqDisplay");
             
             // Set initial state of auto-tuning toggle
             if (_autoTuningToggle != null)
@@ -60,6 +66,7 @@ namespace TAOSW.DSC_Decoder.UI
             }
             
             UpdateInfo();
+            UpdateFrequencyDisplay();
         }
 
         /// <summary>
@@ -95,6 +102,42 @@ namespace TAOSW.DSC_Decoder.UI
                 AutoTuningChanged?.Invoke(this, isEnabled);
                 
                 Console.WriteLine($"Auto-tuning {(isEnabled ? "enabled" : "disabled")} from FrequencyBarChart");
+            }
+        }
+
+        /// <summary>
+        /// Handles increment frequency button click
+        /// </summary>
+        private void OnIncrementFrequencyClicked(object? sender, RoutedEventArgs e)
+        {
+            try
+            {
+                ManualFrequencyAdjustmentRequested?.Invoke(this, FrequencyIncrement);
+                UpdateStatus($"Frequency increased by {FrequencyIncrement} Hz");
+                Console.WriteLine($"Manual frequency increment requested: +{FrequencyIncrement} Hz");
+            }
+            catch (Exception ex)
+            {
+                UpdateStatus($"Error incrementing frequency: {ex.Message}");
+                Console.WriteLine($"Error incrementing frequency: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Handles decrement frequency button click
+        /// </summary>
+        private void OnDecrementFrequencyClicked(object? sender, RoutedEventArgs e)
+        {
+            try
+            {
+                ManualFrequencyAdjustmentRequested?.Invoke(this, -FrequencyIncrement);
+                UpdateStatus($"Frequency decreased by {FrequencyIncrement} Hz");
+                Console.WriteLine($"Manual frequency decrement requested: -{FrequencyIncrement} Hz");
+            }
+            catch (Exception ex)
+            {
+                UpdateStatus($"Error decrementing frequency: {ex.Message}");
+                Console.WriteLine($"Error decrementing frequency: {ex.Message}");
             }
         }
 
@@ -453,6 +496,27 @@ namespace TAOSW.DSC_Decoder.UI
         }
 
         /// <summary>
+        /// Updates the current frequency display
+        /// </summary>
+        /// <param name="leftFreq">Current left frequency</param>
+        public void UpdateFrequencyDisplay(float leftFreq = 0)
+        {
+            if (_currentFreqDisplay != null)
+            {
+                _selectedLeftFreq = leftFreq;
+                _currentFreqDisplay.Text = leftFreq > 0 ? $"{leftFreq:F0} Hz" : "0 Hz";
+            }
+        }
+
+        /// <summary>
+        /// Updates the frequency display without parameters (for internal use)
+        /// </summary>
+        private void UpdateFrequencyDisplay()
+        {
+            UpdateFrequencyDisplay(_selectedLeftFreq);
+        }
+
+        /// <summary>
         /// Sets the selected frequencies for FSK demodulation and redraws the chart
         /// </summary>
         /// <param name="leftFreq">Left frequency (lower) for FSK demodulation</param>
@@ -461,6 +525,9 @@ namespace TAOSW.DSC_Decoder.UI
         {
             _selectedLeftFreq = leftFreq;
             _selectedRightFreq = rightFreq;
+            
+            // Update frequency display
+            UpdateFrequencyDisplay(leftFreq);
             
             DrawChart();
             

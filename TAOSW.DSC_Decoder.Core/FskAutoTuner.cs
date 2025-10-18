@@ -24,6 +24,7 @@ namespace TAOSW.DSC_Decoder.Core
             this.minFreq = minFreq;
             this.sampleRate = sampleRate;
             this.shift = shift;
+            SetManualLeftFreq(minFreq);
         }
 
         public void SetFrequencyRange(float maxFreq, float minFreq)
@@ -35,6 +36,28 @@ namespace TAOSW.DSC_Decoder.Core
         public bool IsTuned => autoLeftFreq != 0 && autoRightFreq != 0;
         public float LeftFreq { get => autoLeftFreq; }
         public float RightFreq { get => autoRightFreq; }
+
+        //set manual LeftFreq ( RightFreq = LeftFreq + shift)
+        public void SetManualLeftFreq(float leftFreq)
+        {
+            // check Frequency range
+            if (leftFreq < minFreq || leftFreq > maxFreq - shift)
+                throw new ArgumentOutOfRangeException($"LeftFreq {leftFreq} is out of range [{minFreq}, {maxFreq - shift}]");
+
+
+            autoLeftFreq = leftFreq;
+            autoRightFreq = leftFreq + shift;
+        }
+
+        // set manual LeftFreq by increment parameter
+        public void SetManualLeftFreqIncrement(float increment)
+        {
+            float newLeftFreq = autoLeftFreq + increment;
+            // check Frequency range
+            if (newLeftFreq < minFreq || newLeftFreq > maxFreq - shift) return;
+            autoLeftFreq = newLeftFreq;
+            autoRightFreq = newLeftFreq + shift;
+        }
 
         public float[] ProcessSignal(float[] signal)
         {

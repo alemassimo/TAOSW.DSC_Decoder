@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Tao Energy SRL. Licensed under the MIT License.
+﻿// Copyright (c) 2025 Tao Energy SRL. Licensed under the MIT License.
 
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
@@ -60,6 +60,7 @@ namespace TAOSW.DSC_Decoder.UI
             if (_frequencyChart != null)
             {
                 _frequencyChart.AutoTuningChanged += OnAutoTuningChanged;
+                _frequencyChart.ManualFrequencyAdjustmentRequested += OnManualFrequencyAdjustmentRequested;
             }
 
             _soundEffectsToggle = this.FindControl<ToggleButton>("SoundEffectsToggle");
@@ -102,6 +103,74 @@ namespace TAOSW.DSC_Decoder.UI
             }
         }
 
+        /// <summary>
+        /// Handles manual frequency adjustment requests from FrequencyBarChart
+        /// </summary>
+        /// <param name="sender">The FrequencyBarChart instance</param>
+        /// <param name="increment">The frequency increment in Hz (positive for increase, negative for decrease)</param>
+        private void OnManualFrequencyAdjustmentRequested(object? sender, float increment)
+        {
+            try
+            {
+                if (_autoTuner != null)
+                {
+                    var oldLeftFreq = _autoTuner.LeftFreq;
+                    
+                    // Apply the manual frequency adjustment
+                    _autoTuner.SetManualLeftFreqIncrement(increment);
+                    
+                    var newLeftFreq = _autoTuner.LeftFreq;
+                    var newRightFreq = _autoTuner.RightFreq;
+                    
+                    Console.WriteLine($"Manual frequency adjustment: {oldLeftFreq:F0} Hz → {newLeftFreq:F0} Hz (increment: {increment:F0} Hz)");
+                    
+                    // Update the frequency chart display
+                    if (_frequencyChart != null)
+                    {
+                        _frequencyChart.UpdateFrequencyDisplay(newLeftFreq);
+                        
+                        // If both frequencies are valid, update the chart visualization
+                        if (newLeftFreq > 0 && newRightFreq > 0)
+                        {
+                            _frequencyChart.SetSelectedFrequencies(newLeftFreq, newRightFreq);
+                        }
+                    }
+                    
+                    Console.WriteLine($"New FSK frequencies: Left={newLeftFreq:F0} Hz, Right={newRightFreq:F0} Hz");
+                }
+                else
+                {
+                    Console.WriteLine("Warning: AutoTuner is not initialized yet");
+                    
+                    Avalonia.Threading.Dispatcher.UIThread.Post(async () =>
+                    {
+                        await ShowMessageAsync("Manual Tuning Error", 
+                            "The auto-tuner is not ready yet. Please wait for the system to initialize.");
+                    });
+                }
+            }
+            catch (ArgumentOutOfRangeException ex)
+            {
+                Console.WriteLine($"Frequency adjustment out of range: {ex.Message}");
+                
+                Avalonia.Threading.Dispatcher.UIThread.Post(async () =>
+                {
+                    await ShowMessageAsync("Frequency Out of Range", 
+                        $"The requested frequency adjustment would exceed the valid range.\n\n{ex.Message}");
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error adjusting frequency manually: {ex.Message}");
+                
+                Avalonia.Threading.Dispatcher.UIThread.Post(async () =>
+                {
+                    await ShowMessageAsync("Manual Tuning Error", 
+                        $"An error occurred while adjusting the frequency:\n{ex.Message}");
+                });
+            }
+        }
+
         private async Task StartDscReceiver()
         {
             try
@@ -119,6 +188,9 @@ namespace TAOSW.DSC_Decoder.UI
                     var initialAutoTuningState = _frequencyChart.IsAutoTuningEnabled;
                     _autoTuner.IsAutoTuningEnabled = initialAutoTuningState;
                     Console.WriteLine($"Initial auto-tuning state synchronized: {initialAutoTuningState}");
+                    
+                    // Initialize frequency display
+                    _frequencyChart.UpdateFrequencyDisplay(_autoTuner.LeftFreq);
                 }
                 
                 devices = new ObservableCollection<AudioDeviceInfo>(audioCapture.GetAudioCaptureDevices());
@@ -388,6 +460,57 @@ namespace TAOSW.DSC_Decoder.UI
             if (_frequencyChart != null)
             {
                 _frequencyChart.SetAutoTuning(enabled);
+            }
+        }
+
+        /// <summary>
+        /// Gets the current left frequency
+        /// </summary>
+        public float CurrentLeftFrequency => _autoTuner?.LeftFreq ?? 0;
+
+        /// <summary>
+        /// Gets the current right frequency
+        /// </summary>
+        public float CurrentRightFrequency => _autoTuner?.RightFreq ?? 0;
+
+        /// <summary>
+        /// Manually adjusts the frequency by the specified increment
+        /// </summary>
+        /// <param name="increment">Frequency increment in Hz (positive to increase, negative to decrease)</param>
+        public void AdjustFrequency(float increment)
+        {
+            OnManualFrequencyAdjustmentRequested(this, increment);
+        }
+
+        /// <summary>
+        /// Sets a specific left frequency manually
+        /// </summary>
+        /// <param name="leftFreq">The left frequency to set in Hz</param>
+        public void SetManualFrequency(float leftFreq)
+        {
+            try
+            {
+                if (_autoTuner != null)
+                {
+                    _autoTuner.SetManualLeftFreq(leftFreq);
+                    
+                    var newLeftFreq = _autoTuner.LeftFreq;
+                    var newRightFreq = _autoTuner.RightFreq;
+                    
+                    // Update the frequency chart display
+                    if (_frequencyChart != null)
+                    {
+                        _frequencyChart.UpdateFrequencyDisplay(newLeftFreq);
+                        _frequencyChart.SetSelectedFrequencies(newLeftFreq, newRightFreq);
+                    }
+                    
+                    Console.WriteLine($"Manual frequency set: Left={newLeftFreq:F0} Hz, Right={newRightFreq:F0} Hz");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error setting manual frequency: {ex.Message}");
+                throw;
             }
         }
 
