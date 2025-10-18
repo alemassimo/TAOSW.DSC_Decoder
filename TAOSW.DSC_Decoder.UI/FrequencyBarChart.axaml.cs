@@ -19,13 +19,22 @@ namespace TAOSW.DSC_Decoder.UI
         private StackPanel? _yAxisLabels;
         private TextBlock? _statusText;
         private TextBlock? _infoText;
+        private ToggleSwitch? _autoTuningToggle;
+        private TextBlock? _currentFreqDisplay;
 
         private const double MinBarWidth = 2.0;
         private const double MaxBarWidth = 20.0;
+        private const float FrequencyIncrement = 5.0f; // Hz per step
 
         // Store selected frequencies for FSK demodulation
         private float _selectedLeftFreq = 0;
         private float _selectedRightFreq = 0;
+
+        // Event to notify when auto-tuning state changes
+        public event EventHandler<bool>? AutoTuningChanged;
+        
+        // Event to notify when manual frequency adjustment is requested
+        public event EventHandler<float>? ManualFrequencyAdjustmentRequested;
 
         public FrequencyBarChart()
         {
@@ -47,8 +56,89 @@ namespace TAOSW.DSC_Decoder.UI
             _yAxisLabels = this.FindControl<StackPanel>("YAxisLabels");
             _statusText = this.FindControl<TextBlock>("StatusText");
             _infoText = this.FindControl<TextBlock>("InfoText");
+            _autoTuningToggle = this.FindControl<ToggleSwitch>("AutoTuningToggle");
+            _currentFreqDisplay = this.FindControl<TextBlock>("CurrentFreqDisplay");
+            
+            // Set initial state of auto-tuning toggle
+            if (_autoTuningToggle != null)
+            {
+                _autoTuningToggle.IsChecked = true; // Default to enabled
+            }
             
             UpdateInfo();
+            UpdateFrequencyDisplay();
+        }
+
+        /// <summary>
+        /// Gets the current state of auto-tuning
+        /// </summary>
+        public bool IsAutoTuningEnabled => _autoTuningToggle?.IsChecked ?? true;
+
+        /// <summary>
+        /// Sets the auto-tuning state programmatically
+        /// </summary>
+        /// <param name="enabled">True to enable auto-tuning, false to disable</param>
+        public void SetAutoTuning(bool enabled)
+        {
+            if (_autoTuningToggle != null)
+            {
+                _autoTuningToggle.IsChecked = enabled;
+            }
+        }
+
+        /// <summary>
+        /// Handles auto-tuning toggle switch changes
+        /// </summary>
+        private void OnAutoTuningToggled(object? sender, RoutedEventArgs e)
+        {
+            if (sender is ToggleSwitch toggle)
+            {
+                bool isEnabled = toggle.IsChecked ?? false;
+                
+                // Update status
+                UpdateStatus($"Auto-tuning {(isEnabled ? "enabled" : "disabled")}");
+                
+                // Notify listeners (MainWindow) of the change
+                AutoTuningChanged?.Invoke(this, isEnabled);
+                
+                Console.WriteLine($"Auto-tuning {(isEnabled ? "enabled" : "disabled")} from FrequencyBarChart");
+            }
+        }
+
+        /// <summary>
+        /// Handles increment frequency button click
+        /// </summary>
+        private void OnIncrementFrequencyClicked(object? sender, RoutedEventArgs e)
+        {
+            try
+            {
+                ManualFrequencyAdjustmentRequested?.Invoke(this, FrequencyIncrement);
+                UpdateStatus($"Frequency increased by {FrequencyIncrement} Hz");
+                Console.WriteLine($"Manual frequency increment requested: +{FrequencyIncrement} Hz");
+            }
+            catch (Exception ex)
+            {
+                UpdateStatus($"Error incrementing frequency: {ex.Message}");
+                Console.WriteLine($"Error incrementing frequency: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Handles decrement frequency button click
+        /// </summary>
+        private void OnDecrementFrequencyClicked(object? sender, RoutedEventArgs e)
+        {
+            try
+            {
+                ManualFrequencyAdjustmentRequested?.Invoke(this, -FrequencyIncrement);
+                UpdateStatus($"Frequency decreased by {FrequencyIncrement} Hz");
+                Console.WriteLine($"Manual frequency decrement requested: -{FrequencyIncrement} Hz");
+            }
+            catch (Exception ex)
+            {
+                UpdateStatus($"Error decrementing frequency: {ex.Message}");
+                Console.WriteLine($"Error decrementing frequency: {ex.Message}");
+            }
         }
 
         /// <summary>
@@ -142,32 +232,24 @@ namespace TAOSW.DSC_Decoder.UI
             var barData = _viewModel.BarData;
             if (!barData.Any()) return;
 
-            // Draw grid lines first
             DrawGrid(canvasWidth, canvasHeight);
-
-            // Draw demodulator range highlight
             DrawDemodulatorRange(canvasWidth, canvasHeight);
 
-            // Calculate bar width based on frequency density
             var frequencyRange = _viewModel.MaxFrequency - _viewModel.MinFrequency;
             var baseBarWidth = Math.Max(MinBarWidth, Math.Min(MaxBarWidth, canvasWidth / frequencyRange * 10));
 
-            // Draw bars
             for (int i = 0; i < barData.Count; i++)
             {
                 DrawBar(barData[i], canvasWidth, canvasHeight, baseBarWidth);
             }
 
-            // Draw selected frequencies if available
             if (_selectedLeftFreq > 0 && _selectedRightFreq > 0)
             {
                 DrawSelectedFrequencies(_selectedLeftFreq, _selectedRightFreq);
             }
 
-            // Draw Y-axis labels
             DrawYAxisLabels(canvasHeight);
 
-            // Draw X-axis labels (general scale)
             DrawXAxisLabels(canvasWidth, canvasHeight);
         }
 
@@ -180,7 +262,6 @@ namespace TAOSW.DSC_Decoder.UI
             var barHeight = bar.NormalizedHeight * canvasHeight * 0.9; // 90% of canvas height
             var y = canvasHeight - barHeight;
 
-            // Create bar rectangle
             var rect = new Rectangle
             {
                 Width = barWidth,
@@ -217,7 +298,6 @@ namespace TAOSW.DSC_Decoder.UI
 
             var gridBrush = new SolidColorBrush(Colors.LightGray) { Opacity = 0.5 };
 
-            // Vertical grid lines (frequency)
             var frequencyStep = (_viewModel.MaxFrequency - _viewModel.MinFrequency) / 10;
             for (int i = 1; i < 10; i++)
             {
@@ -232,7 +312,6 @@ namespace TAOSW.DSC_Decoder.UI
                 _chartCanvas.Children.Add(line);
             }
 
-            // Horizontal grid lines (power)
             for (int i = 1; i < 10; i++)
             {
                 var y = (i * canvasHeight) / 10;
@@ -259,13 +338,11 @@ namespace TAOSW.DSC_Decoder.UI
 
             var frequencyRange = _viewModel.MaxFrequency - _viewModel.MinFrequency;
             
-            // Calculate positions
             var xStart = Math.Max(0, (minDemodFreq - _viewModel.MinFrequency) / frequencyRange * canvasWidth);
             var xEnd = Math.Min(canvasWidth, (maxDemodFreq - _viewModel.MinFrequency) / frequencyRange * canvasWidth);
             
             if (xStart >= canvasWidth || xEnd <= 0) return; // Range is outside visible area
 
-            // Draw highlighted rectangle
             var highlightRect = new Rectangle
             {
                 Width = xEnd - xStart,
@@ -279,7 +356,6 @@ namespace TAOSW.DSC_Decoder.UI
             Canvas.SetTop(highlightRect, 0);
             _chartCanvas.Children.Add(highlightRect);
 
-            // Add label for demodulator range
             var labelText = $"Demod: {minDemodFreq:F0}-{maxDemodFreq:F0} Hz";
             var label = new TextBlock
             {
@@ -291,12 +367,10 @@ namespace TAOSW.DSC_Decoder.UI
                 Padding = new Avalonia.Thickness(4, 2)
             };
 
-            // Position label at top of highlighted area
             Canvas.SetLeft(label, xStart + 5);
             Canvas.SetTop(label, 5);
             _chartCanvas.Children.Add(label);
 
-            // Draw vertical lines at boundaries
             var leftLine = new Line
             {
                 StartPoint = new Avalonia.Point(xStart, 0),
@@ -369,7 +443,6 @@ namespace TAOSW.DSC_Decoder.UI
         {
             var intensity = maxPower > 0 ? power / maxPower : 0;
 
-            // Color gradient from blue (low) to red (high)
             if (intensity < 0.3)
                 return new SolidColorBrush(Colors.LightBlue);
             else if (intensity < 0.6)
@@ -423,6 +496,27 @@ namespace TAOSW.DSC_Decoder.UI
         }
 
         /// <summary>
+        /// Updates the current frequency display
+        /// </summary>
+        /// <param name="leftFreq">Current left frequency</param>
+        public void UpdateFrequencyDisplay(float leftFreq = 0)
+        {
+            if (_currentFreqDisplay != null)
+            {
+                _selectedLeftFreq = leftFreq;
+                _currentFreqDisplay.Text = leftFreq > 0 ? $"{leftFreq:F0} Hz" : "0 Hz";
+            }
+        }
+
+        /// <summary>
+        /// Updates the frequency display without parameters (for internal use)
+        /// </summary>
+        private void UpdateFrequencyDisplay()
+        {
+            UpdateFrequencyDisplay(_selectedLeftFreq);
+        }
+
+        /// <summary>
         /// Sets the selected frequencies for FSK demodulation and redraws the chart
         /// </summary>
         /// <param name="leftFreq">Left frequency (lower) for FSK demodulation</param>
@@ -432,7 +526,9 @@ namespace TAOSW.DSC_Decoder.UI
             _selectedLeftFreq = leftFreq;
             _selectedRightFreq = rightFreq;
             
-            // Redraw chart to show the selected frequencies
+            // Update frequency display
+            UpdateFrequencyDisplay(leftFreq);
+            
             DrawChart();
             
             UpdateStatus($"FSK frequencies: {leftFreq:F0} / {rightFreq:F0} Hz");
@@ -465,7 +561,6 @@ namespace TAOSW.DSC_Decoder.UI
 
             var frequencyRange = _viewModel.MaxFrequency - _viewModel.MinFrequency;
 
-            // Draw left frequency line (lower frequency)
             if (leftFreq >= _viewModel.MinFrequency && leftFreq <= _viewModel.MaxFrequency)
             {
                 var xLeft = (leftFreq - _viewModel.MinFrequency) / frequencyRange * canvasWidth;
@@ -480,7 +575,6 @@ namespace TAOSW.DSC_Decoder.UI
                 };
                 _chartCanvas.Children.Add(leftLine);
 
-                // Add frequency label for left frequency
                 var leftLabel = new TextBlock
                 {
                     Text = $"{leftFreq:F0} Hz",
@@ -496,7 +590,6 @@ namespace TAOSW.DSC_Decoder.UI
                 _chartCanvas.Children.Add(leftLabel);
             }
 
-            // Draw right frequency line (higher frequency)
             if (rightFreq >= _viewModel.MinFrequency && rightFreq <= _viewModel.MaxFrequency)
             {
                 var xRight = (rightFreq - _viewModel.MinFrequency) / frequencyRange * canvasWidth;
@@ -511,7 +604,6 @@ namespace TAOSW.DSC_Decoder.UI
                 };
                 _chartCanvas.Children.Add(rightLine);
 
-                // Add frequency label for right frequency
                 var rightLabel = new TextBlock
                 {
                     Text = $"{rightFreq:F0} Hz",
@@ -527,7 +619,6 @@ namespace TAOSW.DSC_Decoder.UI
                 _chartCanvas.Children.Add(rightLabel);
             }
 
-            // Add a combined label showing the frequency pair
             if (leftFreq > 0 && rightFreq > 0)
             {
                 var pairLabel = new TextBlock

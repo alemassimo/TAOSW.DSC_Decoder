@@ -36,6 +36,57 @@
         <StackPanel Grid.Column="1" 
                     Orientation="Horizontal" 
                     Spacing="10">
+          <!-- Auto-tuning toggle switch -->
+          <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+            <TextBlock Text="Auto-Tuning:" 
+                       FontSize="12" 
+                       VerticalAlignment="Center"
+                       Foreground="DarkBlue"/>
+            <ToggleSwitch Name="AutoTuningToggle"
+                          IsChecked="True"
+                          OnContent="ON"
+                          OffContent="OFF"
+                          IsCheckedChanged="OnAutoTuningToggled"
+                          ToolTip.Tip="Enable/Disable automatic frequency tuning"/>
+          </StackPanel>
+          
+          <!-- Manual frequency adjustment controls -->
+          <StackPanel Orientation="Horizontal" Spacing="3" VerticalAlignment="Center">
+            <TextBlock Text="Manual:" 
+                       FontSize="12" 
+                       VerticalAlignment="Center"
+                       Foreground="DarkBlue"/>
+            <Button Name="DecrementFreqButton" 
+                    Content="-"
+                    Width="30"
+                    Height="25"
+                    FontSize="16"
+                    FontWeight="Bold"
+                    Padding="0"
+                    Click="OnDecrementFrequencyClicked"
+                    ToolTip.Tip="Decrease frequency by 10 Hz"
+                    Classes="ManualFreqButton"/>
+            <Button Name="IncrementFreqButton" 
+                    Content="+"
+                    Width="30"
+                    Height="25"
+                    FontSize="16"
+                    FontWeight="Bold"
+                    Padding="0"
+                    Click="OnIncrementFrequencyClicked"
+                    ToolTip.Tip="Increase frequency by 10 Hz"
+                    Classes="ManualFreqButton"/>
+            <TextBlock Name="CurrentFreqDisplay"
+                       Text="0 Hz"
+                       FontSize="11"
+                       VerticalAlignment="Center"
+                       Foreground="DarkBlue"
+                       FontWeight="SemiBold"
+                       MinWidth="50"
+                       TextAlignment="Center"
+                       ToolTip.Tip="Current left frequency"/>
+          </StackPanel>
+          
           <Button Name="ClearButton" 
                   Content="Clear" 
                   Padding="8,4"

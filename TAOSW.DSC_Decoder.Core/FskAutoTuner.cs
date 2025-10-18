@@ -14,6 +14,8 @@ namespace TAOSW.DSC_Decoder.Core
         private readonly int sampleRate;
         private readonly float shift;
 
+        public bool IsAutoTuningEnabled { get; set; } = true;
+
         public event Action<IEnumerable<FrequencyClusterPower>>? OnFrequenciesDetected;
 
         public FskAutoTuner(float maxFreq, float minFreq, int sampleRate, float shift)
@@ -22,6 +24,7 @@ namespace TAOSW.DSC_Decoder.Core
             this.minFreq = minFreq;
             this.sampleRate = sampleRate;
             this.shift = shift;
+            SetManualLeftFreq(minFreq);
         }
 
         public void SetFrequencyRange(float maxFreq, float minFreq)
@@ -33,6 +36,28 @@ namespace TAOSW.DSC_Decoder.Core
         public bool IsTuned => autoLeftFreq != 0 && autoRightFreq != 0;
         public float LeftFreq { get => autoLeftFreq; }
         public float RightFreq { get => autoRightFreq; }
+
+        //set manual LeftFreq ( RightFreq = LeftFreq + shift)
+        public void SetManualLeftFreq(float leftFreq)
+        {
+            // check Frequency range
+            if (leftFreq < minFreq || leftFreq > maxFreq - shift)
+                throw new ArgumentOutOfRangeException($"LeftFreq {leftFreq} is out of range [{minFreq}, {maxFreq - shift}]");
+
+
+            autoLeftFreq = leftFreq;
+            autoRightFreq = leftFreq + shift;
+        }
+
+        // set manual LeftFreq by increment parameter
+        public void SetManualLeftFreqIncrement(float increment)
+        {
+            float newLeftFreq = autoLeftFreq + increment;
+            // check Frequency range
+            if (newLeftFreq < minFreq || newLeftFreq > maxFreq - shift) return;
+            autoLeftFreq = newLeftFreq;
+            autoRightFreq = newLeftFreq + shift;
+        }
 
         public float[] ProcessSignal(float[] signal)
         {
@@ -62,7 +87,7 @@ namespace TAOSW.DSC_Decoder.Core
             // remove peaks out of range
             peaks = peaks.Where(p => p.Frequency >= minFreq && p.Frequency <= maxFreq).ToList();
 
-            if (peaks.Count < 2) return; 
+            if (peaks.Count < 2 || !IsAutoTuningEnabled) return; 
 
             double f1 = peaks[0].Frequency;
             double f2 = peaks[1].Frequency;
