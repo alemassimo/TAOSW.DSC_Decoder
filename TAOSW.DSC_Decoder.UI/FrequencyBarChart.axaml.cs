@@ -19,6 +19,7 @@ namespace TAOSW.DSC_Decoder.UI
         private StackPanel? _yAxisLabels;
         private TextBlock? _statusText;
         private TextBlock? _infoText;
+        private ToggleSwitch? _autoTuningToggle;
 
         private const double MinBarWidth = 2.0;
         private const double MaxBarWidth = 20.0;
@@ -26,6 +27,9 @@ namespace TAOSW.DSC_Decoder.UI
         // Store selected frequencies for FSK demodulation
         private float _selectedLeftFreq = 0;
         private float _selectedRightFreq = 0;
+
+        // Event to notify when auto-tuning state changes
+        public event EventHandler<bool>? AutoTuningChanged;
 
         public FrequencyBarChart()
         {
@@ -47,8 +51,51 @@ namespace TAOSW.DSC_Decoder.UI
             _yAxisLabels = this.FindControl<StackPanel>("YAxisLabels");
             _statusText = this.FindControl<TextBlock>("StatusText");
             _infoText = this.FindControl<TextBlock>("InfoText");
+            _autoTuningToggle = this.FindControl<ToggleSwitch>("AutoTuningToggle");
+            
+            // Set initial state of auto-tuning toggle
+            if (_autoTuningToggle != null)
+            {
+                _autoTuningToggle.IsChecked = true; // Default to enabled
+            }
             
             UpdateInfo();
+        }
+
+        /// <summary>
+        /// Gets the current state of auto-tuning
+        /// </summary>
+        public bool IsAutoTuningEnabled => _autoTuningToggle?.IsChecked ?? true;
+
+        /// <summary>
+        /// Sets the auto-tuning state programmatically
+        /// </summary>
+        /// <param name="enabled">True to enable auto-tuning, false to disable</param>
+        public void SetAutoTuning(bool enabled)
+        {
+            if (_autoTuningToggle != null)
+            {
+                _autoTuningToggle.IsChecked = enabled;
+            }
+        }
+
+        /// <summary>
+        /// Handles auto-tuning toggle switch changes
+        /// </summary>
+        private void OnAutoTuningToggled(object? sender, RoutedEventArgs e)
+        {
+            if (sender is ToggleSwitch toggle)
+            {
+                bool isEnabled = toggle.IsChecked ?? false;
+                
+                // Update status
+                UpdateStatus($"Auto-tuning {(isEnabled ? "enabled" : "disabled")}");
+                
+                // Notify listeners (MainWindow) of the change
+                AutoTuningChanged?.Invoke(this, isEnabled);
+                
+                Console.WriteLine($"Auto-tuning {(isEnabled ? "enabled" : "disabled")} from FrequencyBarChart");
+            }
         }
 
         /// <summary>

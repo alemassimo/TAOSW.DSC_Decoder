@@ -36,6 +36,20 @@
         <StackPanel Grid.Column="1" 
                     Orientation="Horizontal" 
                     Spacing="10">
+          <!-- Auto-tuning toggle switch -->
+          <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+            <TextBlock Text="Auto-Tuning:" 
+                       FontSize="12" 
+                       VerticalAlignment="Center"
+                       Foreground="DarkBlue"/>
+            <ToggleSwitch Name="AutoTuningToggle"
+                          IsChecked="True"
+                          OnContent="ON"
+                          OffContent="OFF"
+                          IsCheckedChanged="OnAutoTuningToggled"
+                          ToolTip.Tip="Enable/Disable automatic frequency tuning"/>
+          </StackPanel>
+          
           <Button Name="ClearButton" 
                   Content="Clear" 
                   Padding="8,4"

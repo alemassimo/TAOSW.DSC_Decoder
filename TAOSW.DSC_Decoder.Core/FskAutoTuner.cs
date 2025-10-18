@@ -14,6 +14,8 @@ namespace TAOSW.DSC_Decoder.Core
         private readonly int sampleRate;
         private readonly float shift;
 
+        public bool IsAutoTuningEnabled { get; set; } = true;
+
         public event Action<IEnumerable<FrequencyClusterPower>>? OnFrequenciesDetected;
 
         public FskAutoTuner(float maxFreq, float minFreq, int sampleRate, float shift)
@@ -62,7 +64,7 @@ namespace TAOSW.DSC_Decoder.Core
             // remove peaks out of range
             peaks = peaks.Where(p => p.Frequency >= minFreq && p.Frequency <= maxFreq).ToList();
 
-            if (peaks.Count < 2) return; 
+            if (peaks.Count < 2 || !IsAutoTuningEnabled) return; 
 
             double f1 = peaks[0].Frequency;
             double f2 = peaks[1].Frequency;

@@ -56,10 +56,49 @@ namespace TAOSW.DSC_Decoder.UI
             _frequencyChart?.SetFrequencyRange(0, 3000); // 0-3000 Hz as specified
             _frequencyChart?.SetDemodulatorRange(MinDecodeFreq, MaxDecodeFreq); // Highlight demodulator range
 
+            // Subscribe to auto-tuning changes from FrequencyBarChart
+            if (_frequencyChart != null)
+            {
+                _frequencyChart.AutoTuningChanged += OnAutoTuningChanged;
+            }
+
             _soundEffectsToggle = this.FindControl<ToggleButton>("SoundEffectsToggle");
             if (_soundEffectsToggle != null)
             {
                 _soundEffectsToggle.IsChecked = _soundEffectsEnabled;
+            }
+        }
+
+        /// <summary>
+        /// Handles auto-tuning state changes from FrequencyBarChart
+        /// </summary>
+        /// <param name="sender">The FrequencyBarChart instance</param>
+        /// <param name="isEnabled">True if auto-tuning is enabled, false otherwise</param>
+        private void OnAutoTuningChanged(object? sender, bool isEnabled)
+        {
+            try
+            {
+                if (_autoTuner != null)
+                {
+                    _autoTuner.IsAutoTuningEnabled = isEnabled;
+                    Console.WriteLine($"FskAutoTuner auto-tuning set to: {isEnabled}");
+                    
+                    // Optionally, show a brief status message
+                    Avalonia.Threading.Dispatcher.UIThread.Post(async () =>
+                    {
+                        // You could show a toast or brief status message here if desired
+                        // For now, just log the change
+                        Console.WriteLine($"Auto-tuning {(isEnabled ? "enabled" : "disabled")} successfully");
+                    });
+                }
+                else
+                {
+                    Console.WriteLine("Warning: AutoTuner is not initialized yet");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error changing auto-tuning state: {ex.Message}");
             }
         }
 
@@ -73,6 +112,14 @@ namespace TAOSW.DSC_Decoder.UI
                 var squelchLevelDetector = new SquelchLevelDetector(0.0000001f, 0f);
 
                 _autoTuner.OnFrequenciesDetected += OnFrequenciesDetected;
+                
+                // Sync the initial auto-tuning state with the FrequencyBarChart
+                if (_frequencyChart != null)
+                {
+                    var initialAutoTuningState = _frequencyChart.IsAutoTuningEnabled;
+                    _autoTuner.IsAutoTuningEnabled = initialAutoTuningState;
+                    Console.WriteLine($"Initial auto-tuning state synchronized: {initialAutoTuningState}");
+                }
                 
                 devices = new ObservableCollection<AudioDeviceInfo>(audioCapture.GetAudioCaptureDevices());
 
@@ -310,6 +357,11 @@ namespace TAOSW.DSC_Decoder.UI
         public bool SoundEffectsEnabled => _soundEffectsEnabled;
 
         /// <summary>
+        /// Gets the current state of auto-tuning
+        /// </summary>
+        public bool AutoTuningEnabled => _autoTuner?.IsAutoTuningEnabled ?? true;
+
+        /// <summary>
         /// Programmatically sets the sound effects state
         /// </summary>
         /// <param name="enabled">True to enable sound effects, false to disable</param>
@@ -319,6 +371,23 @@ namespace TAOSW.DSC_Decoder.UI
             if (_soundEffectsToggle != null)
             {
                 _soundEffectsToggle.IsChecked = enabled;
+            }
+        }
+
+        /// <summary>
+        /// Programmatically sets the auto-tuning state
+        /// </summary>
+        /// <param name="enabled">True to enable auto-tuning, false to disable</param>
+        public void SetAutoTuning(bool enabled)
+        {
+            if (_autoTuner != null)
+            {
+                _autoTuner.IsAutoTuningEnabled = enabled;
+            }
+            
+            if (_frequencyChart != null)
+            {
+                _frequencyChart.SetAutoTuning(enabled);
             }
         }
 
