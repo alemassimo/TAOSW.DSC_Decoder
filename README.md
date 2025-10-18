@@ -24,6 +24,15 @@ This project provides a comprehensive solution for decoding DSC maritime communi
 
 ## Quick Start
 
+### Precompiled Application for Windows
+
+Here you can find pre-compiled builds ready to run in a Windows environment:
+ [Releases](https://github.com/alemassimo/TAOSW.DSC_Decoder/releases)
+
+Unzip the zip file and run the TAOSW.DSC_Decoder.UI.exe executable.
+
+
+
 ### Console Application
 
 Run the console application:
