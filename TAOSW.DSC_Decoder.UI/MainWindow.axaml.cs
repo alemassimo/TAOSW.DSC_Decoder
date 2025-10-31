@@ -27,8 +27,16 @@ namespace TAOSW.DSC_Decoder.UI
         private DscMessageManager _manager;
         private FskAutoTuner _autoTuner;
 
+        // Sound effects control
         private bool _soundEffectsEnabled = true;
         private ToggleButton _soundEffectsToggle;
+
+        // Dialog management to prevent multiple dialogs
+        private volatile bool _isDialogOpen = false;
+        private readonly object _dialogLock = new object();
+
+        // Logger instance for file logging
+        private readonly FileLogger _logger = new FileLogger();
 
         const string AlarmSoundFilePath = "Sounds/alarm.wav"; 
         const string ErrorSoundFilePath = "Sounds/error.wav"; 
@@ -38,10 +46,16 @@ namespace TAOSW.DSC_Decoder.UI
         public MainWindow()
         {
             InitializeComponent();
+            
+            // Initialize logging
+            _logger.LogStartup();
+            _logger.LogInfo("MainWindow initializing...");
+            
             InitializeControls();
             
             this.Closing += OnWindowClosing;
             
+            _logger.LogInfo("Starting DSC receiver initialization...");
             Task.Run(() => StartDscReceiver());
         }
 
@@ -82,24 +96,24 @@ namespace TAOSW.DSC_Decoder.UI
                 if (_autoTuner != null)
                 {
                     _autoTuner.IsAutoTuningEnabled = isEnabled;
-                    Console.WriteLine($"FskAutoTuner auto-tuning set to: {isEnabled}");
+                    _logger.LogInfo($"Auto-tuning {(isEnabled ? "enabled" : "disabled")}");
                     
                     // Optionally, show a brief status message
                     Avalonia.Threading.Dispatcher.UIThread.Post(async () =>
                     {
                         // You could show a toast or brief status message here if desired
                         // For now, just log the change
-                        Console.WriteLine($"Auto-tuning {(isEnabled ? "enabled" : "disabled")} successfully");
+                        _logger.LogInfo($"Auto-tuning {(isEnabled ? "enabled" : "disabled")} successfully");
                     });
                 }
                 else
                 {
-                    Console.WriteLine("Warning: AutoTuner is not initialized yet");
+                    _logger.LogWarning("AutoTuner is not initialized yet when trying to change auto-tuning state");
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error changing auto-tuning state: {ex.Message}");
+                _logger.LogError("Error changing auto-tuning state", ex);
             }
         }
 
@@ -122,7 +136,7 @@ namespace TAOSW.DSC_Decoder.UI
                     var newLeftFreq = _autoTuner.LeftFreq;
                     var newRightFreq = _autoTuner.RightFreq;
                     
-                    Console.WriteLine($"Manual frequency adjustment: {oldLeftFreq:F0} Hz → {newLeftFreq:F0} Hz (increment: {increment:F0} Hz)");
+                    _logger.LogInfo($"Manual frequency adjustment: {oldLeftFreq:F0} Hz → {newLeftFreq:F0} Hz (increment: {increment:F0} Hz)");
                     
                     // Update the frequency chart display
                     if (_frequencyChart != null)
@@ -136,11 +150,11 @@ namespace TAOSW.DSC_Decoder.UI
                         }
                     }
                     
-                    Console.WriteLine($"New FSK frequencies: Left={newLeftFreq:F0} Hz, Right={newRightFreq:F0} Hz");
+                    _logger.LogInfo($"New FSK frequencies: Left={newLeftFreq:F0} Hz, Right={newRightFreq:F0} Hz");
                 }
                 else
                 {
-                    Console.WriteLine("Warning: AutoTuner is not initialized yet");
+                    _logger.LogWarning("AutoTuner is not initialized yet when trying manual frequency adjustment");
                     
                     Avalonia.Threading.Dispatcher.UIThread.Post(async () =>
                     {
@@ -151,7 +165,7 @@ namespace TAOSW.DSC_Decoder.UI
             }
             catch (ArgumentOutOfRangeException ex)
             {
-                Console.WriteLine($"Frequency adjustment out of range: {ex.Message}");
+                _logger.LogWarning($"Frequency adjustment out of range: {ex.Message}");
                 
                 Avalonia.Threading.Dispatcher.UIThread.Post(async () =>
                 {
@@ -161,7 +175,7 @@ namespace TAOSW.DSC_Decoder.UI
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error adjusting frequency manually: {ex.Message}");
+                _logger.LogError("Error adjusting frequency manually", ex);
                 
                 Avalonia.Threading.Dispatcher.UIThread.Post(async () =>
                 {
@@ -187,7 +201,7 @@ namespace TAOSW.DSC_Decoder.UI
                 {
                     var initialAutoTuningState = _frequencyChart.IsAutoTuningEnabled;
                     _autoTuner.IsAutoTuningEnabled = initialAutoTuningState;
-                    Console.WriteLine($"Initial auto-tuning state synchronized: {initialAutoTuningState}");
+                    _logger.LogInfo($"Initial auto-tuning state synchronized: {initialAutoTuningState}");
                     
                     // Initialize frequency display
                     _frequencyChart.UpdateFrequencyDisplay(_autoTuner.LeftFreq);
@@ -210,7 +224,7 @@ namespace TAOSW.DSC_Decoder.UI
                 
                 _manager.OnError += (error) =>
                 {
-                    Console.WriteLine($"DSC Manager Error: {error}");
+                    _logger.LogError($"DSC Manager Error: {error}");
                     Avalonia.Threading.Dispatcher.UIThread.Post(async () =>
                     {
                         await ShowMessageAsync("DSC Processing Error", $"An error occurred during DSC processing:\n{error}");
@@ -219,14 +233,14 @@ namespace TAOSW.DSC_Decoder.UI
 
                 _manager.OnStatusChanged += (status) =>
                 {
-                    Console.WriteLine($"DSC Manager Status: {status}");
+                    _logger.LogInfo($"DSC Manager Status: {status}");
                 };
 
                 if (audioCapture is AudioCapture audioCaptureImpl)
                 {
                     audioCaptureImpl.OnError += (error) =>
                     {
-                        Console.WriteLine($"Audio Capture Error: {error}");
+                        _logger.LogError($"Audio Capture Error: {error}");
                         Avalonia.Threading.Dispatcher.UIThread.Post(async () =>
                         {
                             await ShowMessageAsync("Audio Capture Error", $"An error occurred with audio capture:\n{error}");
@@ -235,7 +249,7 @@ namespace TAOSW.DSC_Decoder.UI
 
                     audioCaptureImpl.OnStatusChanged += (status) =>
                     {
-                        Console.WriteLine($"Audio Capture Status: {status}");
+                        _logger.LogInfo($"Audio Capture Status: {status}");
                     };
                 }
 
@@ -244,6 +258,10 @@ namespace TAOSW.DSC_Decoder.UI
                     try
                     {
                         if (message.Time is null) message.Time = DateTimeOffset.UtcNow;
+                        
+                        // Log the received DSC message
+                        _logger.LogInfo($"DSC Message received: Category={message.Category}, From={message.From}, To={message.To}, Status={message.Status}");
+                        
                         Avalonia.Threading.Dispatcher.UIThread.Post(() => _viewModel.AddMessage(message));
 
                        if (_soundEffectsEnabled)
@@ -251,12 +269,15 @@ namespace TAOSW.DSC_Decoder.UI
                             switch (message.Category)
                             {
                                 case CategoryOfCall.Distress:
+                                    _logger.LogWarning($"DISTRESS message received from {message.From}");
                                     Task.Run(() => playSound(AlarmSoundFilePath));
                                     break;
                                 case CategoryOfCall.Error:
+                                    _logger.LogWarning($"ERROR message received from {message.From}");
                                     Task.Run(() => playSound(ErrorSoundFilePath));
                                     break;
                                 case CategoryOfCall.Urgency:
+                                    _logger.LogWarning($"URGENCY message received from {message.From}");
                                     Task.Run(() => playSound(WarningSoundFilePath));
                                     break;
                                 default:
@@ -267,7 +288,7 @@ namespace TAOSW.DSC_Decoder.UI
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"Error processing message: {ex.Message}");
+                        _logger.LogError("Error processing DSC message", ex);
                     }
                 };
 
@@ -291,7 +312,7 @@ namespace TAOSW.DSC_Decoder.UI
                             
                             if (!managerHealthy || !audioCaptureHealthy)
                             {
-                                Console.WriteLine("Health check failed - attempting restart");
+                                _logger.LogWarning("Health check failed - attempting restart");
                                 await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(async () =>
                                 {
                                     await ShowMessageAsync("Audio Processing Issue", 
@@ -313,7 +334,7 @@ namespace TAOSW.DSC_Decoder.UI
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Fatal error in StartDscReceiver: {ex.Message}");
+                _logger.LogError($"Fatal error in StartDscReceiver: {ex.Message}", ex);
                 await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(async () =>
                 {
                     await ShowMessageAsync("Critical Error", 
@@ -340,7 +361,7 @@ namespace TAOSW.DSC_Decoder.UI
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error updating frequency chart: {ex.Message}");
+                    _logger.LogError("Error updating frequency chart", ex);
                 }
             });
         }
@@ -416,10 +437,9 @@ namespace TAOSW.DSC_Decoder.UI
             {
                 _soundEffectsEnabled = toggle.IsChecked ?? false;
                 
-                Console.WriteLine($"Sound effects {(_soundEffectsEnabled ? "enabled" : "disabled")}");
+                _logger.LogInfo($"Sound effects {(_soundEffectsEnabled ? "enabled" : "disabled")}");
                 
-                if (_soundEffectsEnabled)Task.Run(() => playSound(WarningSoundFilePath));
-                
+                if (_soundEffectsEnabled) Task.Run(() => playSound(WarningSoundFilePath));
             }
         }
 
@@ -504,126 +524,229 @@ namespace TAOSW.DSC_Decoder.UI
                         _frequencyChart.SetSelectedFrequencies(newLeftFreq, newRightFreq);
                     }
                     
-                    Console.WriteLine($"Manual frequency set: Left={newLeftFreq:F0} Hz, Right={newRightFreq:F0} Hz");
+                    _logger.LogInfo($"Manual frequency set: Left={newLeftFreq:F0} Hz, Right={newRightFreq:F0} Hz");
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error setting manual frequency: {ex.Message}");
+                _logger.LogError("Error setting manual frequency", ex);
                 throw;
             }
         }
 
         /// <summary>
-        /// Shows a simple message dialog
+        /// Shows a simple message dialog, but only if no other dialog is currently open
         /// </summary>
-        private async Task ShowMessageAsync(string title, string message)
+        /// <param name="title">Dialog title</param>
+        /// <param name="message">Dialog message</param>
+        /// <param name="force">If true, forces the dialog to show even if another is open</param>
+        /// <returns>True if dialog was shown, false if another dialog was already open</returns>
+        private async Task<bool> ShowMessageAsync(string title, string message, bool force = false)
         {
-            var dialog = new Window
+            lock (_dialogLock)
             {
-                Title = title,
-                Width = 400,
-                Height = 200,
-                WindowStartupLocation = WindowStartupLocation.CenterOwner,
-                CanResize = false,
-                Content = new StackPanel
+                // Se c'è già una finestra aperta e non è forzata, registra il messaggio ma non mostra la finestra
+                if (_isDialogOpen && !force)
                 {
-                    Margin = new Avalonia.Thickness(20),
-                    Spacing = 15,
-                    Children =
-                    {
-                        new TextBlock
-                        {
-                            Text = message,
-                            TextWrapping = Avalonia.Media.TextWrapping.Wrap,
-                            FontSize = 14
-                        },
-                        new Button
-                        {
-                            Content = "OK",
-                            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
-                            MinWidth = 80,
-                            Classes = { "ActionButton" }
-                        }
-                    }
+                    _logger.LogInfo($"Dialog suppressed (another dialog is open): {title} - {message}");
+                    return false;
                 }
-            };
-
-            if (dialog.Content is StackPanel panel && panel.Children.LastOrDefault() is Button okButton)
-            {
-                okButton.Click += (s, e) => dialog.Close();
+                
+                _isDialogOpen = true;
             }
 
-            await dialog.ShowDialog(this);
+            try
+            {
+                var dialog = new Window
+                {
+                    Title = title,
+                    Width = 400,
+                    Height = 200,
+                    WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                    CanResize = false,
+                    Content = new StackPanel
+                    {
+                        Margin = new Avalonia.Thickness(20),
+                        Spacing = 15,
+                        Children =
+                        {
+                            new TextBlock
+                            {
+                                Text = message,
+                                TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                                FontSize = 14
+                            },
+                            new Button
+                            {
+                                Content = "OK",
+                                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                                MinWidth = 80,
+                                Classes = { "ActionButton" }
+                            }
+                        }
+                    }
+                };
+
+                if (dialog.Content is StackPanel panel && panel.Children.LastOrDefault() is Button okButton)
+                {
+                    okButton.Click += (s, e) => dialog.Close();
+                }
+
+                // Gestisce la chiusura della finestra per resettare il flag
+                dialog.Closed += (s, e) =>
+                {
+                    lock (_dialogLock)
+                    {
+                        _isDialogOpen = false;
+                    }
+                    _logger.LogInfo($"Dialog closed: {title}");
+                };
+
+                _logger.LogInfo($"Showing dialog: {title} - {message}");
+                await dialog.ShowDialog(this);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                // In caso di errore, resetta il flag
+                lock (_dialogLock)
+                {
+                    _isDialogOpen = false;
+                }
+                _logger.LogError("Error showing dialog", ex);
+                throw;
+            }
         }
 
         /// <summary>
-        /// Shows a confirmation dialog and returns the user's choice
+        /// Shows a simple message dialog with default behavior (no force)
         /// </summary>
-        private async Task<bool> ShowConfirmationAsync(string title, string message)
+        /// <param name="title">Dialog title</param>
+        /// <param name="message">Dialog message</param>
+        private async Task ShowMessageAsync(string title, string message)
         {
-            bool result = false;
-            
-            var dialog = new Window
+            await ShowMessageAsync(title, message, false);
+        }
+
+        /// <summary>
+        /// Shows a confirmation dialog and returns the user's choice, but only if no other dialog is currently open
+        /// </summary>
+        /// <param name="title">Dialog title</param>
+        /// <param name="message">Dialog message</param>
+        /// <param name="force">If true, forces the dialog to show even if another is open</param>
+        /// <returns>Tuple: (dialogShown, userChoice) - dialogShown indicates if dialog was actually shown</returns>
+        private async Task<(bool dialogShown, bool userChoice)> ShowConfirmationAsync(string title, string message, bool force = false)
+        {
+            lock (_dialogLock)
             {
-                Title = title,
-                Width = 450,
-                Height = 220,
-                WindowStartupLocation = WindowStartupLocation.CenterOwner,
-                CanResize = false,
-                Content = new StackPanel
+                // Se c'è già una finestra aperta e non è forzata, registra il messaggio ma non mostra la finestra
+                if (_isDialogOpen && !force)
                 {
-                    Margin = new Avalonia.Thickness(20),
-                    Spacing = 15,
-                    Children =
+                    _logger.LogInfo($"Confirmation dialog suppressed (another dialog is open): {title} - {message}");
+                    return (false, false); // Dialog non mostrato, risposta negativa di default
+                }
+                
+                _isDialogOpen = true;
+            }
+
+            try
+            {
+                bool result = false;
+                
+                var dialog = new Window
+                {
+                    Title = title,
+                    Width = 450,
+                    Height = 220,
+                    WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                    CanResize = false,
+                    Content = new StackPanel
                     {
-                        new TextBlock
+                        Margin = new Avalonia.Thickness(20),
+                        Spacing = 15,
+                        Children =
                         {
-                            Text = message,
-                            TextWrapping = Avalonia.Media.TextWrapping.Wrap,
-                            FontSize = 14
-                        },
-                        new StackPanel
-                        {
-                            Orientation = Avalonia.Layout.Orientation.Horizontal,
-                            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
-                            Spacing = 15,
-                            Children =
+                            new TextBlock
                             {
-                                new Button
+                                Text = message,
+                                TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                                FontSize = 14
+                            },
+                            new StackPanel
+                            {
+                                Orientation = Avalonia.Layout.Orientation.Horizontal,
+                                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                                Spacing = 15,
+                                Children =
                                 {
-                                    Content = "Clear All",
-                                    MinWidth = 100,
-                                    Classes = { "ClearButton" }
-                                },
-                                new Button
-                                {
-                                    Content = "Cancel",
-                                    MinWidth = 100,
-                                    Classes = { "ActionButton" }
+                                    new Button
+                                    {
+                                        Content = "Clear All",
+                                        MinWidth = 100,
+                                        Classes = { "ClearButton" }
+                                    },
+                                    new Button
+                                    {
+                                        Content = "Cancel",
+                                        MinWidth = 100,
+                                        Classes = { "ActionButton" }
+                                    }
                                 }
                             }
                         }
                     }
-                }
-            };
+                };
 
-            if (dialog.Content is StackPanel panel && 
-                panel.Children.LastOrDefault() is StackPanel buttonPanel)
-            {
-                if (buttonPanel.Children.FirstOrDefault() is Button clearButton)
+                if (dialog.Content is StackPanel panel && 
+                    panel.Children.LastOrDefault() is StackPanel buttonPanel)
                 {
-                    clearButton.Click += (s, e) => { result = true; dialog.Close(); };
+                    if (buttonPanel.Children.FirstOrDefault() is Button clearButton)
+                    {
+                        clearButton.Click += (s, e) => { result = true; dialog.Close(); };
+                    }
+                    
+                    if (buttonPanel.Children.LastOrDefault() is Button cancelButton)
+                    {
+                        cancelButton.Click += (s, e) => { result = false; dialog.Close(); };
+                    }
                 }
-                
-                if (buttonPanel.Children.LastOrDefault() is Button cancelButton)
+
+                // Gestisce la chiusura della finestra per resettare il flag
+                dialog.Closed += (s, e) =>
                 {
-                    cancelButton.Click += (s, e) => { result = false; dialog.Close(); };
-                }
+                    lock (_dialogLock)
+                    {
+                        _isDialogOpen = false;
+                    }
+                    _logger.LogInfo($"Confirmation dialog closed: {title}, Result: {result}");
+                };
+
+                _logger.LogInfo($"Showing confirmation dialog: {title} - {message}");
+                await dialog.ShowDialog(this);
+                return (true, result);
             }
+            catch (Exception ex)
+            {
+                // In caso di errore, resetta il flag
+                lock (_dialogLock)
+                {
+                    _isDialogOpen = false;
+                }
+                _logger.LogError("Error showing confirmation dialog", ex);
+                throw;
+            }
+        }
 
-            await dialog.ShowDialog(this);
-            return result;
+        /// <summary>
+        /// Shows a confirmation dialog with default behavior (no force) and returns the user's choice
+        /// </summary>
+        /// <param name="title">Dialog title</param>
+        /// <param name="message">Dialog message</param>
+        /// <returns>User's choice (true for confirm, false for cancel or if dialog was not shown)</returns>
+        private async Task<bool> ShowConfirmationAsync(string title, string message)
+        {
+            var (dialogShown, userChoice) = await ShowConfirmationAsync(title, message, false);
+            return userChoice;
         }
 
         private async void playSound(string filePath)
@@ -635,7 +758,7 @@ namespace TAOSW.DSC_Decoder.UI
 
                 if (!File.Exists(filePath))
                 {
-                    Console.WriteLine($"Sound file not found: {filePath}");
+                    _logger.LogWarning($"Sound file not found: {filePath}");
                     return;
                 }
 
@@ -652,21 +775,21 @@ namespace TAOSW.DSC_Decoder.UI
                     }
                     catch (TimeoutException)
                     {
-                        Console.WriteLine($"Timeout loading sound file: {filePath}");
+                        _logger.LogWarning($"Timeout loading sound file: {filePath}");
                     }
                     catch (InvalidOperationException ex)
                     {
-                        Console.WriteLine($"Invalid sound file format {filePath}: {ex.Message}");
+                        _logger.LogWarning($"Invalid sound file format {filePath}: {ex.Message}");
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"Error playing sound {filePath}: {ex.Message}");
+                        _logger.LogError($"Error playing sound {filePath}", ex);
                     }
                 });
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Unexpected error in playSound: {ex.Message}");
+                _logger.LogError("Unexpected error in playSound", ex);
             }
         }
 
@@ -685,15 +808,80 @@ namespace TAOSW.DSC_Decoder.UI
         {
             try
             {
+                _logger.LogInfo("Application shutdown initiated");
+                
                 _manager?.Stop();
                 _manager?.Dispose();
                 
-                Console.WriteLine("Application resources cleaned up successfully");
+                _logger.LogInfo("DSC manager stopped and disposed successfully");
+                
+                // Cleanup old log files (keep 30 days)
+                var deletedCount = _logger.CleanupOldLogs(30);
+                if (deletedCount > 0)
+                {
+                    _logger.LogInfo($"Cleaned up {deletedCount} old log files");
+                }
+                
+                _logger.LogShutdown();
+                _logger.LogInfo("Application resources cleaned up successfully");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error during cleanup: {ex.Message}");
+                _logger.LogError("Error during application cleanup", ex);
             }
         }
+
+        /// <summary>
+        /// Checks if a dialog is currently open
+        /// </summary>
+        public bool IsDialogOpen
+        {
+            get
+            {
+                lock (_dialogLock)
+                {
+                    return _isDialogOpen;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Forces the dialog state to be reset (use with caution)
+        /// </summary>
+        public void ResetDialogState()
+        {
+            lock (_dialogLock)
+            {
+                _isDialogOpen = false;
+                _logger.LogInfo("Dialog state manually reset");
+            }
+        }
+
+        /// <summary>
+        /// Shows a critical message that will be displayed even if another dialog is open
+        /// </summary>
+        /// <param name="title">Dialog title</param>
+        /// <param name="message">Dialog message</param>
+        public async Task ShowCriticalMessageAsync(string title, string message)
+        {
+            await ShowMessageAsync(title, message, force: true);
+        }
+
+        /// <summary>
+        /// Shows a critical confirmation that will be displayed even if another dialog is open
+        /// </summary>
+        /// <param name="title">Dialog title</param>
+        /// <param name="message">Dialog message</param>
+        /// <returns>User's choice</returns>
+        public async Task<bool> ShowCriticalConfirmationAsync(string title, string message)
+        {
+            var (dialogShown, userChoice) = await ShowConfirmationAsync(title, message, force: true);
+            return userChoice;
+        }
+
+        /// <summary>
+        /// Gets the logger instance for external access
+        /// </summary>
+        public FileLogger Logger => _logger;
     }
 }
