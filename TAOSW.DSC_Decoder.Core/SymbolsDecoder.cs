@@ -1,11 +1,6 @@
 ﻿// Copyright (c) 2025 Tao Energy SRL. Licensed under the MIT License.
 
-using MathNet.Numerics;
-using System;
-using System.Net.NetworkInformation;
-using System.Numerics;
 using System.Text;
-using System.Threading.Channels;
 using TAOSW.DSC_Decoder.Core.Domain;
 
 namespace TAOSW.DSC_Decoder.Core
@@ -14,41 +9,70 @@ namespace TAOSW.DSC_Decoder.Core
     {
         public static DSCMessage Decode(IEnumerable<int> symbols)
         {
-            // if first symbol is -1, then the format specifier is the second symbol
-            var format = symbols.First() != -1 ? symbols.First() : symbols.ElementAt(1);
-            var formatType = GetFormatSpecifier(format);
             try
             {
-                return formatType switch
+                // if first symbol is -1, then the format specifier is the second symbol
+                var format = symbols.First() != -1 ? symbols.First() : symbols.ElementAt(1);
+                var formatType = GetFormatSpecifier(format);
+                
+                try
                 {
-                    FormatSpecifier.DistressAlert => DecodeDistressAlert(symbols),
-                    FormatSpecifier.AllShipsCall => DecodeAllShipsCall(symbols),
-                    FormatSpecifier.GroupCall => DecodeGroupCall(symbols),
-                    FormatSpecifier.IndividualStationCall => DecodeIndividualStationCall(symbols),
-                    FormatSpecifier.GeographicAreaGroupCall => DecodeGeographicAreaGroupCall(symbols),
-                    FormatSpecifier.AutomaticServiceCall => DecodeAutomaticServiceCall(symbols),
-                    _ => throw new ArgumentException("Invalid format specifier", nameof(symbols))
-                }; 
+                    return formatType switch
+                    {
+                        FormatSpecifier.DistressAlert => DecodeDistressAlert(symbols),
+                        FormatSpecifier.AllShipsCall => DecodeAllShipsCall(symbols),
+                        FormatSpecifier.GroupCall => DecodeGroupCall(symbols),
+                        FormatSpecifier.IndividualStationCall => DecodeIndividualStationCall(symbols),
+                        FormatSpecifier.GeographicAreaGroupCall => DecodeGeographicAreaGroupCall(symbols),
+                        FormatSpecifier.AutomaticServiceCall => DecodeAutomaticServiceCall(symbols),
+                        _ => throw new ArgumentException("Invalid format specifier", nameof(symbols))
+                    }; 
+                }
+                // catch all ArgumentException and NotImplementedException and return a DSCMessage with the error message
+                catch (Exception ex) when (ex is ArgumentException || ex is NotImplementedException || ex is FormatException || ex is ArgumentOutOfRangeException)
+                {
+                    return new DSCMessage
+                    {
+                        Symbols = symbols.ToList(),
+                        Format = formatType,
+                        Status = $"Error -> {ex.Message}"
+                    };
+                }
             }
-            // catch all ArgumentException and NotImplementedException and return a DSCMessage with the error message
-            catch ( Exception ex) when (ex is ArgumentException || ex is NotImplementedException)
+            catch (Exception ex)
             {
+                // Handle any other unexpected errors
                 return new DSCMessage
                 {
                     Symbols = symbols.ToList(),
-                    Format = formatType,
-                    Status = $"Error -> {ex.Message}"
+                    Format = FormatSpecifier.Error, // Default format
+                    Status = $"Parsing Error -> {ex.Message}"
                 };
             }
-            
-
-
         }
 
         private static DSCMessage DecodeAutomaticServiceCall(IEnumerable<int> symbols)
         {
-            var From = ExtractMmsiNumber(symbols.Skip(2).Take(5));
-            throw new NotImplementedException("AutomaticServiceCall format not implemented");
+            try
+            {
+                var From = ExtractMmsiNumber(symbols.Skip(2).Take(5));
+                return new DSCMessage
+                {
+                    Symbols = symbols.ToList(),
+                    Format = FormatSpecifier.AutomaticServiceCall,
+                    From = From,
+                    Status = "Not implemented -> AutomaticServiceCall format not implemented"
+                };
+            }
+            catch (Exception ex)
+            {
+                return new DSCMessage
+                {
+                    Symbols = symbols.ToList(),
+                    Format = FormatSpecifier.AutomaticServiceCall,
+                    Status = $"Error -> {ex.Message}"
+                };
+            }
         }
 
         private static DSCMessage DecodeGeographicAreaGroupCall(IEnumerable<int> symbols)
@@ -79,8 +103,26 @@ namespace TAOSW.DSC_Decoder.Core
 
         private static DSCMessage DecodeGroupCall(IEnumerable<int> symbols)
         {
-            var To = ExtractMmsiNumber(symbols.Skip(2).Take(5));
-            throw new NotImplementedException("GroupCall format not implemented.");
+            try
+            {
+                var To = ExtractMmsiNumber(symbols.Skip(2).Take(5));
+                return new DSCMessage
+                {
+                    Symbols = symbols.ToList(),
+                    Format = FormatSpecifier.GroupCall,
+                    To = To,
+                    Status = "Not implemented -> GroupCall format not implemented"
+                };
+            }
+            catch (Exception ex)
+            {
+                return new DSCMessage
+                {
+                    Symbols = symbols.ToList(),
+                    Format = FormatSpecifier.GroupCall,
+                    Status = $"Error -> {ex.Message}"
+                };
+            }
         }
 
         private static DSCMessage DecodeAllShipsCall(IEnumerable<int> symbols)
@@ -246,18 +288,34 @@ namespace TAOSW.DSC_Decoder.Core
 
         private static TEnum GetEnumValue<TEnum>(int symbol) where TEnum : Enum
         {
-            foreach (TEnum enumValue in Enum.GetValues(typeof(TEnum)))
-                if (Convert.ToInt32(enumValue) == symbol) return enumValue;
+            try
+            {
+                foreach (TEnum enumValue in Enum.GetValues(typeof(TEnum)))
+                    if (Convert.ToInt32(enumValue) == symbol) return enumValue;
 
-            return GetEnumValueWithException<TEnum>(-1);
+                return GetEnumValueWithException<TEnum>(-1);
+            }
+            catch (Exception)
+            {
+                // If conversion fails, return the first enum value as default
+                return (TEnum)Enum.GetValues(typeof(TEnum)).GetValue(0);
+            }
         }
 
         private static TEnum GetEnumValueWithException<TEnum>(int symbol) where TEnum : Enum
         {
-            foreach (TEnum enumValue in Enum.GetValues(typeof(TEnum)))
-                if (Convert.ToInt32(enumValue) == symbol) return enumValue;
+            try
+            {
+                foreach (TEnum enumValue in Enum.GetValues(typeof(TEnum)))
+                    if (Convert.ToInt32(enumValue) == symbol) return enumValue;
 
-            throw new ArgumentException("Invalid symbol", nameof(symbol));
+                throw new ArgumentException("Invalid symbol", nameof(symbol));
+            }
+            catch (Exception ex) when (!(ex is ArgumentException))
+            {
+                // If conversion fails, throw a more descriptive error
+                throw new ArgumentException($"Failed to convert symbol {symbol} to enum type {typeof(TEnum).Name}", nameof(symbol));
+            }
         }
 
         private static NatureOfDistress ExtractNaturOfDistress(int symbol) => GetEnumValue<NatureOfDistress>(symbol);
@@ -267,16 +325,23 @@ namespace TAOSW.DSC_Decoder.Core
         {
             if (symbols.Count() != 5) throw new ArgumentException("Invalid number of symbols", nameof(symbols));
 
-            StringBuilder mmsi = new StringBuilder();
-            foreach (var symbol in symbols)
+            try
             {
-                if (symbol == -1) mmsi.Append("__");
-                else
-                mmsi.Append(Utils.IntTo2CharString(symbol));
-            }
+                StringBuilder mmsi = new StringBuilder();
+                foreach (var symbol in symbols)
+                {
+                    if (symbol == -1) mmsi.Append("__");
+                    else mmsi.Append(Utils.IntTo2CharString(symbol));
+                }
 
-            // remove last char of string
-            return mmsi.Remove(mmsi.Length - 1, 1).ToString();
+                // remove last char of string
+                return mmsi.Remove(mmsi.Length - 1, 1).ToString(); ;
+            }
+            catch (Exception ex)
+            {
+                // If MMSI extraction fails, return a placeholder
+                return "ERROR_MMSI";
+            }
         }
 
         private static DateTimeOffset? ExtractTime(IEnumerable<int> input)
@@ -284,16 +349,46 @@ namespace TAOSW.DSC_Decoder.Core
             if (input == null || input.Count() != 2)
                 throw new ArgumentException("Input must be a list of exactly 2 integers (each representing 2 digits).");
             
-            string digits = string.Join("", input.ToList().ConvertAll(n => n.ToString("D2")));
+            var inputList = input.ToList();
+            
+            
+            string hh, mm;
+            
+            if (inputList[0] == -1)hh = "__";
+            
+            else
+            {
+                string hourString = inputList[0].ToString("D2");
+                hh = hourString.Length == 2 ? hourString : "__";
+            }
+            
+            if (inputList[1] == -1)mm = "__";
+            else
+            {
+                string minuteString = inputList[1].ToString("D2");
+                mm = minuteString.Length == 2 ? minuteString : "__";
+            }
 
-            var hh = digits.Substring(0, 2) == "-1" ? "__" : digits.Substring(0, 2);
-            var mm = digits.Substring(2, 2) == "-1" ? "__" : digits.Substring(2, 2);
+            // Only attempt to parse if both values are valid (not "__")
+            if (hh == "__" || mm == "__")return null;
+            
 
-            var timeVal = (hh == "__" || mm == "__") ? (DateTimeOffset?)null :
-                new DateTimeOffset(DateTime.UtcNow.Year, DateTime.UtcNow.Month, DateTime.UtcNow.Day,
-                int.Parse(hh), int.Parse(mm), 0, TimeSpan.Zero);
-
-            return timeVal;
+            try
+            {
+                var timeVal = new DateTimeOffset(DateTime.UtcNow.Year, DateTime.UtcNow.Month, DateTime.UtcNow.Day,
+                    int.Parse(hh), int.Parse(mm), 0, TimeSpan.Zero);
+                return timeVal;
+            }
+            catch (FormatException)
+            {
+                // If parsing fails, return null instead of throwing
+                return null;
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                // If the time values are out of range, return null instead of throwing
+                return null;
+            }
         }
 
         // extract posizione 10.10N 20.5E format
@@ -303,19 +398,43 @@ namespace TAOSW.DSC_Decoder.Core
             {
                 throw new ArgumentException("Input must be a list of exactly 5 integers (each representing 2 digits).");
             }
-            string digits = string.Join("", input.ToList().ConvertAll(n => n.ToString("D2")));
-            int quadrant = int.Parse(digits.Substring(0, 1));
-            string quadrantName = quadrant switch
+            
+            // Check if any input contains -1, return error if so
+            if (input.Contains(-1)) 
             {
-                0 => "NE",
-                1 => "NW",
-                2 => "SE",
-                3 => "SW",
-                _ => "Unknown quadrant"
-            };
-            var latitude = digits.Substring(0, 3) + "." + digits.Substring(3, 2);
-            var longitude = digits.Substring(5, 3) + "." + digits.Substring(8, 2);
-            return $"{latitude}{quadrantName.Substring(0,1)} {longitude}{quadrantName.Substring(1, 1)}";
+                return "--error--";
+            }
+            
+            try
+            {
+                string digits = string.Join("", input.ToList().ConvertAll(n => n.ToString("D2")));
+                
+                if (digits.Length != 10)
+                {
+                    return "--error--";
+                }
+                
+                int quadrant = int.Parse(digits.Substring(0, 1));
+                string quadrantName = quadrant switch
+                {
+                    0 => "NE",
+                    1 => "NW",
+                    2 => "SE",
+                    3 => "SW",
+                    _ => "Unknown quadrant"
+                };
+                var latitude = digits.Substring(1, 2) + "." + digits.Substring(3, 2);
+                var longitude = digits.Substring(5, 3) + "." + digits.Substring(8, 2);
+                return $"{latitude}{quadrantName.Substring(0,1)} {longitude}{quadrantName.Substring(1, 1)}";
+            }
+            catch (FormatException)
+            {
+                return "--error--";
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                return "--error--";
+            }
         }
 
 
@@ -350,35 +469,51 @@ namespace TAOSW.DSC_Decoder.Core
 
             if (input == null || input.Count() != 5)
             {
-                throw new ArgumentException("Input must be a list of exactly 7 integers (each representing 2 digits).");
+                throw new ArgumentException("Input must be a list of exactly 5 integers (each representing 2 digits).");
             }
 
-            // Unpack the 5 integers into 10 digits
-            string digits = string.Join("", input.ToList().ConvertAll(n => n.ToString("D2")));
-
-            int quadrant = int.Parse(digits.Substring(0, 1));
-            string quadrantName = quadrant switch
+            try
             {
-                0 => "North-East (NE)",
-                1 => "North-West (NW)",
-                2 => "South-East (SE)",
-                3 => "South-West (SW)",
-                _ => "Unknown quadrant"
-            };
+                // Unpack the 5 integers into 10 digits
+                string digits = string.Join("", input.ToList().ConvertAll(n => n.ToString("D2")));
 
-            int latitude = int.Parse(digits.Substring(1, 2));
-            int longitude = int.Parse(digits.Substring(3, 3));
-            int verticalSide = int.Parse(digits.Substring(6, 2));
-            int horizontalSide = int.Parse(digits.Substring(8, 2));
+                if (digits.Length != 10)
+                {
+                    return "--error--";
+                }
+
+                int quadrant = int.Parse(digits.Substring(0, 1));
+                string quadrantName = quadrant switch
+                {
+                    0 => "North-East (NE)",
+                    1 => "North-West (NW)",
+                    2 => "South-East (SE)",
+                    3 => "South-West (SW)",
+                    _ => "Unknown quadrant"
+                };
+
+                int latitude = int.Parse(digits.Substring(1, 2));
+                int longitude = int.Parse(digits.Substring(3, 3));
+                int verticalSide = int.Parse(digits.Substring(6, 2));
+                int horizontalSide = int.Parse(digits.Substring(8, 2));
 
 #if DEBUG
-            Console.WriteLine($"Quadrant: {quadrantName}");
-            Console.WriteLine($"Reference point latitude: {latitude}°");
-            Console.WriteLine($"Reference point longitude: {longitude}°");
-            Console.WriteLine($"Vertical side of rectangle (North-South): {verticalSide}°");
-            Console.WriteLine($"Horizontal side of rectangle (West-East): {horizontalSide}°");
+                Console.WriteLine($"Quadrant: {quadrantName}");
+                Console.WriteLine($"Reference point latitude: {latitude}°");
+                Console.WriteLine($"Reference point longitude: {longitude}°");
+                Console.WriteLine($"Vertical side of rectangle (North-South): {verticalSide}°");
+                Console.WriteLine($"Horizontal side of rectangle (West-East): {horizontalSide}°");
 #endif      
-            return $"{quadrantName}, Reference point: {latitude}°, {longitude}°, Vertical side: {verticalSide}°, Horizontal side: {horizontalSide}°";
+                return $"{quadrantName}, Reference point: {latitude}°, {longitude}°, Vertical side: {verticalSide}°, Horizontal side: {horizontalSide}°";
+            }
+            catch (FormatException)
+            {
+                return "--error--";
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                return "--error--";
+            }
         }
 
         private static string ExtractFrequencies(List<int> input)
@@ -386,70 +521,103 @@ namespace TAOSW.DSC_Decoder.Core
             if (input == null || input.Count != 6) 
                 throw new ArgumentException("Input must be a list of exactly 6 integers.");
             
-            // Convert the list of integers to a string of digits
-            string digits = string.Join("",  input.ConvertAll(n => n==-1 ? "__" : n.ToString("D2")));
-
-
-            char digit1 = digits[0];
-            char digit2 = digits[1];
-
-            return digit1 switch
+            try
             {
-                '0' or '1' or '2' => ExtractMfHf100HzMultipleFrequencies(input, digits),
-                '3' => ExtractMfHfWorkingChannelFrequencies(digits),
-                '4' => ExtractMfHf10HzMultipleFrequencies(digits),
-                '9' when digit2 == '0' => ExtractVhfFrequencies(digits),
-                '8' => ExtractVhfAutomatedSystem(digits),
-                _ => "--error--",
-            };
+                // Convert the list of integers to a string of digits
+                string digits = string.Join("",  input.ConvertAll(n => n==-1 ? "__" : n.ToString("D2")));
+
+
+                if (digits.Length != 12)
+                {
+                    return "--error--";
+                }
+
+                char digit1 = digits[0];
+                char digit2 = digits[1];
+
+                return digit1 switch
+                {
+                    '0' or '1' or '2' => ExtractMfHf100HzMultipleFrequencies(input, digits),
+                    '3' => ExtractMfHfWorkingChannelFrequencies(digits),
+                    '4' => ExtractMfHf10HzMultipleFrequencies(digits),
+                    '9' when digit2 == '0' => ExtractVhfFrequencies(digits),
+                    '8' => ExtractVhfAutomatedSystem(digits),
+                    _ => "--error--",
+                };
+            }
+            catch (Exception)
+            {
+                return "--error--";
+            }
         }
 
         private static string ExtractVhfAutomatedSystem(string digits)
         {
-            throw new NotImplementedException();
-        }
-
-        private static string ExtractVhfFrequencies(string digits)
-        {
-            string channelMode1 = "";
-            string channelMode2 = "";
-            string channelType1 = digits[1] switch
-            {
-                '1' => "Simplex channel ",
-                '2' => "Simplex channel ",
-                '0' => "Duplex channel",
-                _ => "Unknown channel type"
-            };
-            channelMode1 = $"{channelType1} {digits.Substring(3, 3)}";
-            string channelType2 = digits[7] switch
-            {
-                '1' => "Simplex channel ",
-                '2' => "Simplex channel ",
-                '0' => "Duplex channel",
-                _ => "Unknown channel type"
-            };
-            channelMode2 = $"{channelType2} {digits.Substring(9, 3)}";
-
-            return $"{channelMode1} - {channelMode2}";
-            
+            return "--not implemented--";
         }
 
         private static string ExtractMfHf10HzMultipleFrequencies(string digits)
         {
-            throw new NotImplementedException();
+            return "--not implemented--";
         }
 
         private static string ExtractMfHfWorkingChannelFrequencies(string digits)
         {
-            throw new NotImplementedException();
+            return "--not implemented--";
+        }
+
+        private static string ExtractVhfFrequencies(string digits)
+        {
+            try
+            {
+                if (digits.Length < 12 || digits.Contains("_"))
+                {
+                    return "--error--";
+                }
+
+                string channelMode1 = "";
+                string channelMode2 = "";
+                string channelType1 = digits[1] switch
+                {
+                    '1' => "Simplex channel ",
+                    '2' => "Simplex channel ",
+                    '0' => "Duplex channel",
+                    _ => "Unknown channel type"
+                };
+                channelMode1 = $"{channelType1} {digits.Substring(3, 3)}";
+                string channelType2 = digits[7] switch
+                {
+                    '1' => "Simplex channel ",
+                    '2' => "Simplex channel ",
+                    '0' => "Duplex channel",
+                    _ => "Unknown channel type"
+                };
+                channelMode2 = $"{channelType2} {digits.Substring(9, 3)}";
+
+                return $"{channelMode1} - {channelMode2}";
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                return "--error--";
+            }
         }
 
         private static string ExtractMfHf100HzMultipleFrequencies(IEnumerable<int> input, string chars)
         {
-            string frequency1 = chars.Substring(0, 5) + "." + chars.Substring(5, 1);
-            string frequency2 = input.Skip(3).All(n => n > 99) ? "" : chars.Substring(6, 5) + "." + chars.Substring(11, 1);
-            
-            return String.IsNullOrEmpty(frequency2) ? frequency1 : $"{frequency1}/{frequency2}";
+            try
+            {
+                if (chars.Length < 12 || chars.Contains("_"))return "--error--";
+                
+
+                string frequency1 = chars.Substring(0, 5) + "." + chars.Substring(5, 1);
+                string frequency2 = input.Skip(3).All(n => n > 99) ? "" : chars.Substring(6, 5) + "." + chars.Substring(11, 1);
+                
+                return String.IsNullOrEmpty(frequency2) ? frequency1 : $"{frequency1}/{frequency2}";
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                return "--error--";
+            }
         }
     }
 }
