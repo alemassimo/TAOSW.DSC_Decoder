@@ -38,7 +38,7 @@ namespace TAOSW.DSC_Decoder.Core.Tests
                 Format = FormatSpecifier.DistressAlert,
                 Nature = NatureOfDistress.UndesignatedDistress,
                 From = "255805997",
-                Position = "045.26N 013.07E", // "45.26°N 013.07°E",
+                Position = "45 26N 013 07E", // "45.26°N 013.07°E",
                 EOS = EndOfSequence.OtherCalls,
                 CECC = 52,
                 Status = "OK",
@@ -62,7 +62,7 @@ namespace TAOSW.DSC_Decoder.Core.Tests
                 Format = FormatSpecifier.DistressAlert,
                 Nature = NatureOfDistress.UndesignatedDistress,
                 From = "255805997",
-                Position = "045.26N 013.07E", // "45.26°N 013.07°E",
+                Position = "45 26N 013 07E", 
                 EOS = EndOfSequence.OtherCalls,
                 CECC = 51,
                 Status = "Error",
@@ -342,7 +342,7 @@ namespace TAOSW.DSC_Decoder.Core.Tests
                 From = "232019715",
                 TC1 = FirstCommand.J3ETP,
                 TC2 = SecondCommand.NoInformation,
-                Position = "058.53N 001.34E",
+                Position = "58 53N 001 34E",
                 EOS = EndOfSequence.AcknowledgeRQ,
                 CECC = 18,
                 Status = "OK",
@@ -548,7 +548,7 @@ namespace TAOSW.DSC_Decoder.Core.Tests
                 From = "241726000",
                 TC1 = FirstCommand.J3ETP,
                 TC2 = SecondCommand.NoInformation,
-                Position = "037.56N 023.38E",
+                Position = "37 56N 023 38E",
                 EOS = EndOfSequence.AcknowledgeRQ,
                 CECC = 67,
                 Status = "OK"
@@ -770,7 +770,7 @@ namespace TAOSW.DSC_Decoder.Core.Tests
         // TC1: J3E TP
         // TC2: NOINF
         //FREQ: --
-        // POS: 36.16°N 021.23°E
+        // POS: 36 16N 021 23E
         // EOS: REQ
         //cECC: 118 OK
         [TestMethod]
@@ -786,7 +786,7 @@ namespace TAOSW.DSC_Decoder.Core.Tests
                 From = "271002601",
                 TC1 = FirstCommand.J3ETP,
                 TC2 = SecondCommand.NoInformation,
-                Position = "036.16N 021.23E",
+                Position = "36 16N 021 23E",
                 EOS = EndOfSequence.AcknowledgeRQ,
                 CECC = 118,
                 Status = "OK"

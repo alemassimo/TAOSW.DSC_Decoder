@@ -423,8 +423,8 @@ namespace TAOSW.DSC_Decoder.Core
                     3 => "SW",
                     _ => "Unknown quadrant"
                 };
-                var latitude = digits.Substring(1, 2) + "." + digits.Substring(3, 2);
-                var longitude = digits.Substring(5, 3) + "." + digits.Substring(8, 2);
+                var latitude = digits.Substring(1, 2) + " " + digits.Substring(3, 2);
+                var longitude = digits.Substring(5, 3) + " " + digits.Substring(8, 2);
                 return $"{latitude}{quadrantName.Substring(0,1)} {longitude}{quadrantName.Substring(1, 1)}";
             }
             catch (FormatException)
@@ -526,12 +526,6 @@ namespace TAOSW.DSC_Decoder.Core
                 // Convert the list of integers to a string of digits
                 string digits = string.Join("",  input.ConvertAll(n => n==-1 ? "__" : n.ToString("D2")));
 
-
-                if (digits.Length != 12)
-                {
-                    return "--error--";
-                }
-
                 char digit1 = digits[0];
                 char digit2 = digits[1];
 
@@ -606,8 +600,7 @@ namespace TAOSW.DSC_Decoder.Core
         {
             try
             {
-                if (chars.Length < 12 || chars.Contains("_"))return "--error--";
-                
+                if (chars.Length < 12)return "--error--";
 
                 string frequency1 = chars.Substring(0, 5) + "." + chars.Substring(5, 1);
                 string frequency2 = input.Skip(3).All(n => n > 99) ? "" : chars.Substring(6, 5) + "." + chars.Substring(11, 1);
