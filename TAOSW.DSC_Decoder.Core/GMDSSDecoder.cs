@@ -25,34 +25,30 @@ namespace TAOSW.DSC_Decoder.Core
             TryProcessBuffer();
         }
 
-        private bool ProcessSubSequence(List<int> subBitBuffer)
+        private bool ProcessSubSequence(int[] bitArray, int start, int length)
         {
-            int Errors = 0;
-            var dataOut = new List<int>();
-            var bitArray = subBitBuffer.ToArray();
-            for (int i = 0; i + 10 < bitArray.Length; i += 10)
+            int errors = 0;
+            int end = start + length;
+            var dataOut = new List<int>((length + 9) / 10);
+            for (int i = start; i + 10 < end; i += 10)
             {
-
-                var data = RetriveDataByte(bitArray, i);
-
-                bool check = CheckParity(data, bitArray.Skip(i + 7).Take(3).ToArray());
+                var data = GetDataByte(bitArray, i);
+                bool check = CheckParity(data, bitArray, i + 7);
                 if (!check)
                 {
                     dataOut.Add(-1);
-                    Errors++;
+                    errors++;
 
-                    if (Errors > ERROR_THRESHOLD) return false;
+                    if (errors > ERROR_THRESHOLD) return false;
                 }
                 else
                 {
-
                     dataOut.Add(data);
-                    //if (data == 122) break;
                 }
             }
 
             var processed = false;
-            if (IsPhased(dataOut.ToArray(), 0))
+            if (IsPhased(dataOut, 0))
             {
                 Console.WriteLine($"IsPhased.");
                 dataOut.ForEach(@byte =>
@@ -76,38 +72,35 @@ namespace TAOSW.DSC_Decoder.Core
 
         private void TryProcessBuffer()
         {
-            var dataOut = new List<int>();
             var bitArray = bitBuffer.ToArray();
             if (bitArray.Length < MESSAGE_LENGTH) return;
 
-
-            for (int i = 0; i < 10; i += 1)
+            for (int i = 0; i < 10; i++)
             {
-
                 var preambleLength = GetPreambleLength(bitArray, i);
-                var processed = ProcessSubSequence(bitArray.Skip(i).Take(MESSAGE_LENGTH + preambleLength).ToList());
+                int length = Math.Min(MESSAGE_LENGTH + preambleLength, bitArray.Length - i);
+                ProcessSubSequence(bitArray, i, length);
 
-                if (bitBuffer.Any()) bitBuffer.Dequeue();
+                if (bitBuffer.Count > 0) bitBuffer.Dequeue();
             }
         }
 
         public static bool IsPreambleGroup(int[] bits, int start)
         {
-            int[] preambleGroup = { 1, 0, 1, 0, 1, 0, 1, 0, 1, 0 };
-            int[] preambleGroup2 = { 0, 1, 0, 1, 0, 1, 0, 1, 0, 1 };
-            try
+            if (start < 0 || start > bits.Length - 10) return false;
+
+            int firstBit = bits[start];
+            if (firstBit is not (0 or 1)) return false;
+
+            for (int i = 1; i < 10; i++)
             {
-                var subSequence = bits.Skip(start).Take(10).ToArray();
-                if (!subSequence.SequenceEqual(preambleGroup) && !subSequence.SequenceEqual(preambleGroup2)) return false;
+                if (bits[start + i] != (firstBit ^ (i & 1))) return false;
             }
-            catch (IndexOutOfRangeException)
-            {
-                return false;
-            }
+
             return true;
         }
 
-        private bool IsPhased(int[] bytes, int start)
+        private bool IsPhased(IReadOnlyList<int> bytes, int start)
         {
             var dxMatchs = 0;
             var rxMatchs = 0;
@@ -187,29 +180,31 @@ namespace TAOSW.DSC_Decoder.Core
 
         public static int RetriveDataByte(IEnumerable<int> bits, int i)
         {
-            var bitsArray = bits.ToArray();
+            if (bits is IReadOnlyList<int> indexedBits)
+                return GetDataByte(indexedBits, i);
+
+            return GetDataByte(bits.ToArray(), i);
+        }
+
+        private static int GetDataByte(IReadOnlyList<int> bits, int i)
+        {
             int dataByte = 0;
-            for (int j = 0; j < 7; j++) dataByte |= bitsArray[i + j] << j;
-
-
+            for (int j = 0; j < 7; j++) dataByte |= bits[i + j] << j;
             return dataByte;
         }
 
-        private bool CheckParity(int value, int[] parityBits)
+        private bool CheckParity(int value, int[] parityBits, int start = 0)
         {
             try
             {
                 int computedParity = ComputeParity(value);
-                int receivedParity = parityBits[0] << 2 | parityBits[1] << 1 | parityBits[2];
+                int receivedParity = parityBits[start] << 2 | parityBits[start + 1] << 1 | parityBits[start + 2];
                 return computedParity == receivedParity;
             }
             catch (Exception)
             {
                 return false;
             }
-
-
-
         }
 
         private int ComputeParity(int value)

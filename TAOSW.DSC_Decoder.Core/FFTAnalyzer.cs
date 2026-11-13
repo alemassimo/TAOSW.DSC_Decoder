@@ -22,13 +22,25 @@ namespace TAOSW.DSC_Decoder.Core
         public static Complex[] ComputeFFT(float[] signal, int paddedLength = 0)
         {
             int N = signal.Length;
-            int M = paddedLength > N ? paddedLength : N; 
+            int M = paddedLength > N ? paddedLength : N;
 
             Complex[] fftBuffer = new Complex[M];
-
             for (int i = 0; i < N; i++)
                 fftBuffer[i] = new Complex(signal[i], 0);
 
+            Fourier.Forward(fftBuffer, FourierOptions.Default);
+            return fftBuffer;
+        }
+
+        public static Complex[] ComputeFFT(float[] signal, Complex[] fftBuffer)
+        {
+            if (fftBuffer.Length < signal.Length)
+                throw new ArgumentException("FFT buffer must be at least as large as the signal.", nameof(fftBuffer));
+
+            for (int i = 0; i < signal.Length; i++)
+                fftBuffer[i] = new Complex(signal[i], 0);
+
+            Array.Clear(fftBuffer, signal.Length, fftBuffer.Length - signal.Length);
             Fourier.Forward(fftBuffer, FourierOptions.Default);
             return fftBuffer;
         }

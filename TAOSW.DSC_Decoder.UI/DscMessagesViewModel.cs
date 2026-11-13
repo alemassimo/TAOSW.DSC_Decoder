@@ -1,4 +1,6 @@
+using System;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
@@ -6,13 +8,53 @@ using TAOSW.DSC_Decoder.Core.Domain;
 
 namespace TAOSW.DSC_Decoder.UI
 {
-    public class DscMessagesViewModel
+    public class DscMessagesViewModel : INotifyPropertyChanged
     {
+        private bool _excludeTestMessages;
+
         public ObservableCollection<DSCMessage> Messages { get; } = new();
-        
-        public void AddMessage(DSCMessage message) => Messages.Insert(0, message);
-        
-        public void ClearMessages() => Messages.Clear();
+        public ObservableCollection<DSCMessage> VisibleMessages { get; } = new();
+
+        public bool ExcludeTestMessages
+        {
+            get => _excludeTestMessages;
+            set
+            {
+                if (_excludeTestMessages == value) return;
+
+                _excludeTestMessages = value;
+                RefreshVisibleMessages();
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ExcludeTestMessages)));
+            }
+        }
+
+        public event PropertyChangedEventHandler? PropertyChanged;
+
+        public void AddMessage(DSCMessage message)
+        {
+            Messages.Insert(0, message);
+            if (ShouldShowMessage(message))
+                VisibleMessages.Insert(0, message);
+        }
+
+        public void ClearMessages()
+        {
+            Messages.Clear();
+            VisibleMessages.Clear();
+        }
+
+        private bool ShouldShowMessage(DSCMessage message) =>
+            !_excludeTestMessages || !message.TC1.ToString().Contains("test", StringComparison.OrdinalIgnoreCase);
+
+        private void RefreshVisibleMessages()
+        {
+            VisibleMessages.Clear();
+            foreach (var message in Messages)
+            {
+                if (ShouldShowMessage(message))
+                    VisibleMessages.Add(message);
+            }
+        }
         
         public async Task SaveToCsvAsync(string filePath)
         {

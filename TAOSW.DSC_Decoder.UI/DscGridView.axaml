@@ -16,8 +16,11 @@
       <RowDefinition Height="Auto"/>
       <RowDefinition Height="*"/>
     </Grid.RowDefinitions>
-    <Label Content="DSC Messages" HorizontalAlignment="Center" VerticalAlignment="Top" FontSize="24" Margin="0,10,0,10"/>
-    <DataGrid x:Name="MessagesDataGrid" Grid.Row="1" ItemsSource="{Binding Messages}" AutoGenerateColumns="False">
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="16" Margin="0,10,0,10">
+      <Label Content="DSC Messages" VerticalAlignment="Center" FontSize="24"/>
+      <CheckBox Content="Remove Test Messages (TC1)" IsChecked="{Binding ExcludeTestMessages}" VerticalAlignment="Center"/>
+    </StackPanel>
+    <DataGrid x:Name="MessagesDataGrid" Grid.Row="1" ItemsSource="{Binding VisibleMessages}" AutoGenerateColumns="False">
       <DataGrid.Columns>
         <DataGridTextColumn Header="Time" Binding="{Binding Time}" />
         <DataGridTemplateColumn Header="Category">
