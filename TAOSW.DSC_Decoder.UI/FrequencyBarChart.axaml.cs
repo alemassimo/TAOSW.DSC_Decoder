@@ -145,7 +145,12 @@ namespace TAOSW.DSC_Decoder.UI
         /// Main method to draw the frequency bar chart
         /// </summary>
         /// <param name="frequencies">Frequency cluster power data from FskAutoTuner</param>
-        public void Draw(IEnumerable<FskAutoTuner.FrequencyClusterPower> frequencies)
+        public void Draw(IEnumerable<FskAutoTuner.FrequencyClusterPower> frequencies) => Draw(frequencies, null, null);
+
+        public void Draw(
+            IEnumerable<FskAutoTuner.FrequencyClusterPower> frequencies,
+            float? selectedLeftFrequency,
+            float? selectedRightFrequency)
         {
             try
             {
@@ -157,6 +162,12 @@ namespace TAOSW.DSC_Decoder.UI
 
                 var freqList = frequencies.ToList();
                 UpdateStatus($"Drawing {freqList.Count} frequency bars");
+                if (selectedLeftFrequency.HasValue && selectedRightFrequency.HasValue)
+                {
+                    _selectedLeftFreq = selectedLeftFrequency.Value;
+                    _selectedRightFreq = selectedRightFrequency.Value;
+                    UpdateFrequencyDisplay(_selectedLeftFreq);
+                }
 
                 // Update view model data
                 var canvasWidth = _chartCanvas?.Bounds.Width ?? 800;

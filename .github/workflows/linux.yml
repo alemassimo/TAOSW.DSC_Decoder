@@ -1,0 +1,18 @@
+name: Linux build and tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - run: dotnet test Gateways.Linux.Tests/Gateways.Linux.Tests.csproj --configuration Release
+      - run: dotnet test TAOSW.DSC_Decoder.Core.Tests/TAOSW.DSC_Decoder.Core.Tests.csproj --configuration Release
+      - run: dotnet build TAOSW.DSC_Decoder.UI_linux/TAOSW.DSC_Decoder.UI_linux.csproj --configuration Release
+      - run: dotnet publish TAOSW.DSC_Decoder.UI_linux/TAOSW.DSC_Decoder.UI_linux.csproj --configuration Release --runtime linux-x64 --self-contained false

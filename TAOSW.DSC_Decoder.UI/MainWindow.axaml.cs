@@ -9,7 +9,6 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
-using System.Media;
 using System.Threading.Tasks;
 using TAOSW.DSC_Decoder.Core;
 using TAOSW.DSC_Decoder.Core.Domain;
@@ -22,6 +21,10 @@ namespace TAOSW.DSC_Decoder.UI
         private const int MaxDecodeFreq = 700;
         private const int MinDecodeFreq = 300;
         private readonly DscMessagesViewModel _viewModel = new();
+        private readonly object _frequencyDisplayLock = new();
+        private FskAutoTuner.FrequencyClusterPower[]? _pendingFrequencyDisplay;
+        private bool _frequencyDisplayPending;
+        private Avalonia.Threading.DispatcherTimer? _frequencyDisplayTimer;
         private ObservableCollection<AudioDeviceInfo> devices;
         private FrequencyBarChart _frequencyChart;
         private DscMessageManager _manager;
@@ -34,6 +37,8 @@ namespace TAOSW.DSC_Decoder.UI
         // Dialog management to prevent multiple dialogs
         private volatile bool _isDialogOpen = false;
         private readonly object _dialogLock = new object();
+        private bool _isClosing;
+        private bool _audioCaptureErrorDialogShown;
 
         // Logger instance for file logging
         private readonly FileLogger _logger = new FileLogger();
@@ -75,6 +80,16 @@ namespace TAOSW.DSC_Decoder.UI
             {
                 _frequencyChart.AutoTuningChanged += OnAutoTuningChanged;
                 _frequencyChart.ManualFrequencyAdjustmentRequested += OnManualFrequencyAdjustmentRequested;
+            }
+
+            if (OperatingSystem.IsLinux())
+            {
+                _frequencyDisplayTimer = new Avalonia.Threading.DispatcherTimer
+                {
+                    Interval = TimeSpan.FromMilliseconds(100)
+                };
+                _frequencyDisplayTimer.Tick += OnFrequencyDisplayTimerTick;
+                _frequencyDisplayTimer.Start();
             }
 
             _soundEffectsToggle = this.FindControl<ToggleButton>("SoundEffectsToggle");
@@ -187,10 +202,12 @@ namespace TAOSW.DSC_Decoder.UI
 
         private async Task StartDscReceiver()
         {
+            IAudioCapture? audioCapture = null;
             try
             {
                 int sampleRate = 44100; // 88200;
-                IAudioCapture audioCapture = new AudioCapture(sampleRate);
+                var audioCaptureInstance = PlatformServices.CreateAudioCapture(sampleRate);
+                audioCapture = audioCaptureInstance;
                 _autoTuner = new FskAutoTuner(MaxDecodeFreq, MinDecodeFreq, sampleRate, 170);
                 var squelchLevelDetector = new SquelchLevelDetector(0.0000001f, 0f);
 
@@ -207,10 +224,12 @@ namespace TAOSW.DSC_Decoder.UI
                     _frequencyChart.UpdateFrequencyDisplay(_autoTuner.LeftFreq);
                 }
                 
-                devices = new ObservableCollection<AudioDeviceInfo>(audioCapture.GetAudioCaptureDevices());
+                devices = new ObservableCollection<AudioDeviceInfo>(audioCaptureInstance.GetAudioCaptureDevices());
 
                 if (devices.Count == 0)
                 {
+                    audioCaptureInstance.Dispose();
+                    audioCapture = null;
                     await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(async () =>
                     {
                         await ShowMessageAsync("No Audio Devices", "No audio capture devices were found. Please check your audio hardware and try again.");
@@ -220,7 +239,8 @@ namespace TAOSW.DSC_Decoder.UI
 
                 int deviceNumber = await SelectDeviceFromDialogBox(devices.ToList());
 
-                _manager = new DscMessageManager(audioCapture, _autoTuner, squelchLevelDetector, sampleRate);
+                int processingDelayMs = OperatingSystem.IsLinux() ? 0 : 10;
+                _manager = new DscMessageManager(audioCaptureInstance, _autoTuner, squelchLevelDetector, sampleRate, processingDelayMs);
                 
                 _manager.OnError += (error) =>
                 {
@@ -236,22 +256,23 @@ namespace TAOSW.DSC_Decoder.UI
                     _logger.LogInfo($"DSC Manager Status: {status}");
                 };
 
-                if (audioCapture is AudioCapture audioCaptureImpl)
+                audioCaptureInstance.OnError += (error) =>
                 {
-                    audioCaptureImpl.OnError += (error) =>
+                    _logger.LogError($"Audio Capture Error: {error}");
+                    Avalonia.Threading.Dispatcher.UIThread.Post(async () =>
                     {
-                        _logger.LogError($"Audio Capture Error: {error}");
-                        Avalonia.Threading.Dispatcher.UIThread.Post(async () =>
-                        {
-                            await ShowMessageAsync("Audio Capture Error", $"An error occurred with audio capture:\n{error}");
-                        });
-                    };
+                        if (_isClosing || _audioCaptureErrorDialogShown)
+                            return;
 
-                    audioCaptureImpl.OnStatusChanged += (status) =>
-                    {
-                        _logger.LogInfo($"Audio Capture Status: {status}");
-                    };
-                }
+                        _audioCaptureErrorDialogShown = true;
+                        await ShowMessageAsync("Audio Capture Error", $"An error occurred with audio capture:\n{error}");
+                    });
+                };
+
+                audioCaptureInstance.OnStatusChanged += (status) =>
+                {
+                    _logger.LogInfo($"Audio Capture Status: {status}");
+                };
 
                 _manager.OnClusteredMessageSelected += (message) =>
                 {
@@ -303,12 +324,7 @@ namespace TAOSW.DSC_Decoder.UI
                             await Task.Delay(TimeSpan.FromSeconds(30));
                             
                             bool managerHealthy = _manager?.IsHealthy() == true;
-                            bool audioCaptureHealthy = true;
-                            
-                            if (audioCapture is AudioCapture audioCaptureImpl)
-                            {
-                                audioCaptureHealthy = audioCaptureImpl.IsHealthy();
-                            }
+                            bool audioCaptureHealthy = audioCaptureInstance.IsHealthy();
                             
                             if (!managerHealthy || !audioCaptureHealthy)
                             {
@@ -334,6 +350,9 @@ namespace TAOSW.DSC_Decoder.UI
             }
             catch (Exception ex)
             {
+                if (_manager is null)
+                    audioCapture?.Dispose();
+
                 _logger.LogError($"Fatal error in StartDscReceiver: {ex.Message}", ex);
                 await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(async () =>
                 {
@@ -345,15 +364,25 @@ namespace TAOSW.DSC_Decoder.UI
 
         private void OnFrequenciesDetected(IEnumerable<FskAutoTuner.FrequencyClusterPower> frequencies)
         {
+            if (OperatingSystem.IsLinux())
+            {
+                lock (_frequencyDisplayLock)
+                {
+                    _pendingFrequencyDisplay = frequencies.ToArray();
+                    _frequencyDisplayPending = true;
+                }
+                return;
+            }
+
             Avalonia.Threading.Dispatcher.UIThread.Post(() =>
             {
                 try
                 {
                     _frequencyChart.Draw(frequencies);
-                    
+
                     var leftFreq = _autoTuner.LeftFreq;
                     var rightFreq = _autoTuner.RightFreq;
-                    
+
                     if (leftFreq > 0 && rightFreq > 0)
                     {
                         _frequencyChart.SetSelectedFrequencies(leftFreq, rightFreq);
@@ -364,6 +393,31 @@ namespace TAOSW.DSC_Decoder.UI
                     _logger.LogError("Error updating frequency chart", ex);
                 }
             });
+        }
+
+        private void OnFrequencyDisplayTimerTick(object? sender, EventArgs e)
+        {
+            FskAutoTuner.FrequencyClusterPower[]? frequencies;
+            lock (_frequencyDisplayLock)
+            {
+                if (!_frequencyDisplayPending)
+                    return;
+
+                frequencies = _pendingFrequencyDisplay;
+                _frequencyDisplayPending = false;
+            }
+
+            if (frequencies is null || _frequencyChart is null || _autoTuner is null)
+                return;
+
+            try
+            {
+                _frequencyChart.Draw(frequencies, _autoTuner.LeftFreq, _autoTuner.RightFreq);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Error updating frequency chart", ex);
+            }
         }
 
         /// <summary>
@@ -543,6 +597,9 @@ namespace TAOSW.DSC_Decoder.UI
         /// <returns>True if dialog was shown, false if another dialog was already open</returns>
         private async Task<bool> ShowMessageAsync(string title, string message, bool force = false)
         {
+            if (_isClosing)
+                return false;
+
             lock (_dialogLock)
             {
                 // Se c'è già una finestra aperta e non è forzata, registra il messaggio ma non mostra la finestra
@@ -756,36 +813,16 @@ namespace TAOSW.DSC_Decoder.UI
                 if (!_soundEffectsEnabled)
                     return;
 
-                if (!File.Exists(filePath))
+                var resolvedPath = Path.IsPathRooted(filePath)
+                    ? filePath
+                    : Path.Combine(AppContext.BaseDirectory, filePath);
+                if (!File.Exists(resolvedPath))
                 {
-                    _logger.LogWarning($"Sound file not found: {filePath}");
+                    _logger.LogWarning($"Sound file not found: {resolvedPath}");
                     return;
                 }
 
-                await Task.Run(() =>
-                {
-                    try
-                    {
-                        using (SoundPlayer player = new SoundPlayer(filePath))
-                        {
-                            player.LoadTimeout = 5000; 
-                            player.Load();
-                            player.Play();
-                        }
-                    }
-                    catch (TimeoutException)
-                    {
-                        _logger.LogWarning($"Timeout loading sound file: {filePath}");
-                    }
-                    catch (InvalidOperationException ex)
-                    {
-                        _logger.LogWarning($"Invalid sound file format {filePath}: {ex.Message}");
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError($"Error playing sound {filePath}", ex);
-                    }
-                });
+                await Task.Run(() => PlatformServices.AudioPlayback.Play(resolvedPath));
             }
             catch (Exception ex)
             {
@@ -806,6 +843,9 @@ namespace TAOSW.DSC_Decoder.UI
 
         private void OnWindowClosing(object? sender, WindowClosingEventArgs e)
         {
+            _isClosing = true;
+            _frequencyDisplayTimer?.Stop();
+
             try
             {
                 _logger.LogInfo("Application shutdown initiated");

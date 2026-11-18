@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.2.1" />
+    <PackageReference Include="Avalonia.Controls.DataGrid" Version="11.2.1" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.2.1" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.2.1" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.2.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="LinuxAudioPlaybackService.cs" />
+    <Compile Include="..\TAOSW.DSC_Decoder.UI\**\*.cs"
+             Exclude="..\TAOSW.DSC_Decoder.UI\Program.cs;..\TAOSW.DSC_Decoder.UI\WindowsAudioPlaybackService.cs;..\TAOSW.DSC_Decoder.UI\bin\**;..\TAOSW.DSC_Decoder.UI\obj\**;..\TAOSW.DSC_Decoder.UI\**\*.cs.user"
+             Link="SharedUI\%(RecursiveDir)%(Filename)%(Extension)" />
+    <AvaloniaXaml Include="..\TAOSW.DSC_Decoder.UI\**\*.axaml"
+                  Exclude="..\TAOSW.DSC_Decoder.UI\bin\**;..\TAOSW.DSC_Decoder.UI\obj\**"
+                  Link="SharedUI\%(RecursiveDir)%(Filename)%(Extension)" />
+    <Content Include="..\TAOSW.DSC_Decoder.UI\Sounds\*.wav"
+             Link="Sounds\%(Filename)%(Extension)"
+             CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TAOSW.DSC_Decoder.Core\TAOSW.DSC_Decoder.Core.csproj" />
+    <ProjectReference Include="..\Gateways.Linux\Gateways.Linux.csproj" />
+  </ItemGroup>
+</Project>

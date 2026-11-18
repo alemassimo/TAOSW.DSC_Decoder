@@ -18,9 +18,11 @@ This project provides a comprehensive solution for decoding DSC maritime communi
 
 - **TAOSW.DSC_Decoder.Core**: Core decoding library
 - **TAOSW.DSC_Decoder**: Console application
-- **TAOSW.DSC_Decoder.UI**: GUI application with Avalonia UI
-- **Gateways**: Audio capture implementation
-- **TAOSW.DSC_Decoder.Core.Tests**: Unit tests
+- **TAOSW.DSC_Decoder.UI**: GUI application with Avalonia UI for Windows
+- **TAOSW.DSC_Decoder.UI_linux**: Linux GUI using the shared Avalonia UI
+- **Gateways**: Windows audio capture implementation
+- **Gateways.Linux**: PortAudio-based Linux audio capture
+- **TAOSW.DSC_Decoder.Core.Tests** and **Gateways.Linux.Tests**: Unit tests
 
 ## Quick Start
 
@@ -61,6 +63,37 @@ The GUI application will:
 3. Play notification sounds for non-test messages
 
 The GUI shows decoded DSC messages in a comprehensive table format with columns for time, frequency, format, nature description, source/destination stations, telecommands, position, end-of-sequence indicators, error correction codes, and status.
+
+### Linux GUI (Debian/Ubuntu x64)
+
+The Linux application shares the Avalonia views and decoder Core with the Windows UI. Live audio input uses PortAudio and notification sounds use `paplay` or `aplay`.
+
+Install .NET 8 and the native audio runtime:
+
+```bash
+sudo apt update
+sudo apt install libportaudio2 pulseaudio-utils
+```
+
+`pulseaudio-utils` provides `paplay` for notification sounds on PulseAudio/PipeWire desktops. Alternatively, install `alsa-utils` to use `aplay`. Sound playback is optional; audio capture requires `libportaudio2` and a configured ALSA, PulseAudio, or PipeWire input device. Start the application from the logged-in desktop session so it can access the user audio server and devices.
+
+Run from the repository:
+
+```bash
+dotnet run --project TAOSW.DSC_Decoder.UI_linux
+```
+
+Publish a framework-dependent x64 build (the destination machine must have the .NET 8 runtime):
+
+```bash
+dotnet publish TAOSW.DSC_Decoder.UI_linux/TAOSW.DSC_Decoder.UI_linux.csproj \
+  --configuration Release --runtime linux-x64 --self-contained false \
+  --output ./artifacts/linux-x64
+
+dotnet ./artifacts/linux-x64/TAOSW.DSC_Decoder.UI_linux.dll
+```
+
+The Linux UI writes logs under `${XDG_STATE_HOME:-$HOME/.local/state}/taosw-dsc-decoder/logs`. For audio issues, check that the input device is visible in the desktop audio settings and that `libportaudio2` is installed; if notifications are unavailable, install `pulseaudio-utils` or `alsa-utils`.
 
 ## Using the Core Library
 

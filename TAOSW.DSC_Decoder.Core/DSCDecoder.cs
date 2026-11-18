@@ -14,38 +14,41 @@ namespace TAOSW.DSC_Decoder.Core
             private readonly int _samplesPerBit;
             private readonly int _sampleRate;
             private readonly int _windowSlip;
-            private readonly float[] _signalQueue;
             private readonly float[] _chunk;
-            private float[] _processedSignal = Array.Empty<float>();
+            private float[] _pendingSignal;
             private readonly FSKDetector FskDetector;
 
             public DSCDecoder(int baudRate, int sampleRate)
             {
                 _sampleRate = sampleRate;
                 _samplesPerBit = sampleRate / baudRate;
-                _windowSlip =(int)(_samplesPerBit* MaxSlideWindowOffset) / (SlideWindowsNumber);
-                _signalQueue = new float[_samplesPerBit];
+                _windowSlip = (int)(_samplesPerBit * MaxSlideWindowOffset) / SlideWindowsNumber;
+                _pendingSignal = new float[_samplesPerBit];
                 _chunk = new float[_samplesPerBit];
                 FskDetector = new FSKDetector(_sampleRate);
-
-                InitSignalQueue();
             }
+
             public List<int>[] DecodeFSK(float[] inSignal, float lFreq, float rFreq)
             {
+                ArgumentNullException.ThrowIfNull(inSignal);
+
                 List<int>[] bitStreams = InitBitStreams();
+                var signal = new float[_pendingSignal.Length + inSignal.Length];
+                Array.Copy(_pendingSignal, signal, _pendingSignal.Length);
+                Array.Copy(inSignal, 0, signal, _pendingSignal.Length, inSignal.Length);
 
-                int processedSignalLength = inSignal.Length + _samplesPerBit;
-                if (_processedSignal.Length != processedSignalLength)
-                    _processedSignal = new float[processedSignalLength];
+                int requiredWindowLength = _samplesPerBit + (SlideWindowsNumber - 1) * _windowSlip;
+                int processedSamples = 0;
+                for (; processedSamples + requiredWindowLength <= signal.Length; processedSamples += _samplesPerBit)
+                {
+                    for (int window = 0; window < SlideWindowsNumber; window++)
+                    {
+                        bitStreams[window].Add(RetriveBitByWindowNumber(lFreq, rFreq, signal, processedSamples, window, out _));
+                    }
+                }
 
-                Array.Copy(inSignal, 0, _processedSignal, _samplesPerBit, inSignal.Length);
-                Array.Copy(_signalQueue, 0, _processedSignal, 0, _samplesPerBit);
-
-                for (int i = 0; i < inSignal.Length; i += _samplesPerBit)
-                    for (int j = 0; j < SlideWindowsNumber; j++)
-                        bitStreams[j].Add(RetriveBitByWindowNumber(lFreq, rFreq, _processedSignal, i, j, out _));
-
-                Array.Copy(_processedSignal, inSignal.Length, _signalQueue, 0, _samplesPerBit);
+                _pendingSignal = new float[signal.Length - processedSamples];
+                Array.Copy(signal, processedSamples, _pendingSignal, 0, _pendingSignal.Length);
 
                 return bitStreams;
             }
@@ -61,11 +64,6 @@ namespace TAOSW.DSC_Decoder.Core
             {
                 Array.Copy(signal, i + windowNumber * _windowSlip, _chunk, 0, _samplesPerBit);
                 return FskDetector.DetectFSK(_chunk, lFreq, rFreq, out certainty);
-            }
-
-            private void InitSignalQueue()
-            {
-                for (int i = 0; i < _samplesPerBit; i++) _signalQueue[i] = 0;
             }
         }
 

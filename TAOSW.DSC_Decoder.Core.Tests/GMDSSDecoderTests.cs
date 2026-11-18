@@ -70,6 +70,7 @@ namespace TAOSW.DSC_Decoder.Core.Tests
             var actual = GMDSSDecoder.IsPreambleGroup(bits.ToArray(), 0);
             Assert.AreEqual(expected, actual);
         }
+
     }
 
     //0101111010 122

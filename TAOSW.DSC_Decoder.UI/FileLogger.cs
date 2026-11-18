@@ -26,7 +26,7 @@ namespace TAOSW.DSC_Decoder.UI
         /// <param name="fileNamePrefix">Prefix for log file names (optional, defaults to "DSC_Log")</param>
         public FileLogger(string? logDirectory = null, string? fileNamePrefix = null)
         {
-            _logDirectory = logDirectory ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs");
+            _logDirectory = logDirectory ?? GetDefaultLogDirectory();
             _fileNamePrefix = fileNamePrefix ?? "DSC_Log";
             _currentLogDate = DateTime.MinValue; // Force initial file creation
             
@@ -35,6 +35,22 @@ namespace TAOSW.DSC_Decoder.UI
             
             // Log initialization (will be written to first log file created)
             WriteLog("INFO", $"FileLogger initialized - Directory: {_logDirectory}");
+        }
+
+        private static string GetDefaultLogDirectory()
+        {
+            if (!OperatingSystem.IsLinux())
+                return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs");
+
+            var stateHome = Environment.GetEnvironmentVariable("XDG_STATE_HOME");
+            if (!string.IsNullOrWhiteSpace(stateHome) && Path.IsPathFullyQualified(stateHome))
+                return Path.Combine(stateHome, "taosw-dsc-decoder", "logs");
+
+            var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            if (string.IsNullOrWhiteSpace(home))
+                throw new InvalidOperationException("Could not determine the current user's home directory for application logs.");
+
+            return Path.Combine(home, ".local", "state", "taosw-dsc-decoder", "logs");
         }
 
         /// <summary>

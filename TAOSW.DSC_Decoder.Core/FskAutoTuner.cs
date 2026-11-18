@@ -99,7 +99,7 @@ namespace TAOSW.DSC_Decoder.Core
 
             if (Math.Abs(peaks[0].Power - peaks[1].Power) < MagnitudeThreshold * Math.Max(peaks[0].Power, peaks[1].Power)) return;
             //if (Math.Abs(autoLeftFreq - lF) <= 25) return; 
-            
+
 
             autoLeftFreq = lF;
             autoRightFreq = rF;

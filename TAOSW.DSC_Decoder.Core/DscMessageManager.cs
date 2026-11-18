@@ -13,7 +13,8 @@ public class DscMessageManager : IDisposable
     private readonly GMDSSDecoder[] _decoders;
     private readonly DSCDecoder _dscDecoder;
     private readonly DscMessageClusterizer _dscMessageClusterizer;
-    
+    private readonly int _processingDelayMs;
+
     private volatile bool _isRunning = false;
     private volatile bool _isDisposed = false;
     private CancellationTokenSource? _cancellationTokenSource;
@@ -35,12 +36,15 @@ public class DscMessageManager : IDisposable
     public event Action<string>? OnError;
     public event Action<string>? OnStatusChanged;
 
-    public DscMessageManager(IAudioCapture audioCapture, FskAutoTuner autoTuner, SquelchLevelDetector squelchLevelDetector, int sampleRate)
+    public DscMessageManager(IAudioCapture audioCapture, FskAutoTuner autoTuner, SquelchLevelDetector squelchLevelDetector, int sampleRate, int processingDelayMs = 10)
     {
         _audioCapture = audioCapture ?? throw new ArgumentNullException(nameof(audioCapture));
         _autoTuner = autoTuner ?? throw new ArgumentNullException(nameof(autoTuner));
         _squelchLevelDetector = squelchLevelDetector ?? throw new ArgumentNullException(nameof(squelchLevelDetector));
-        
+        if (processingDelayMs < 0)
+            throw new ArgumentOutOfRangeException(nameof(processingDelayMs));
+        _processingDelayMs = processingDelayMs;
+
         _decoders = new GMDSSDecoder[DSCDecoder.SlideWindowsNumber];
         _dscDecoder = new DSCDecoder(100, sampleRate);
         _dscMessageClusterizer = new DscMessageClusterizer(new TimeSpan(0, 0, 2));
@@ -111,7 +115,7 @@ public class DscMessageManager : IDisposable
     private async Task ProcessAudioLoop(CancellationToken cancellationToken)
     {
         const int expectedDataSize = 1764; // Expected audio data size
-        const int sleepDelayMs = 10; // Small delay to prevent busy waiting
+        const int idleDelayMs = 10; // Prevent busy waiting when no data is available
         int consecutiveEmptyReads = 0;
         const int maxEmptyReads = 100; // Allow some empty reads before considering it an issue
 
@@ -133,8 +137,8 @@ public class DscMessageManager : IDisposable
                             HandleError($"No audio data received for {consecutiveEmptyReads} consecutive reads");
                             consecutiveEmptyReads = 0; // Reset to prevent spam
                         }
-                        
-                        await Task.Delay(sleepDelayMs, cancellationToken);
+
+                        await Task.Delay(idleDelayMs, cancellationToken);
                         continue;
                     }
 
@@ -144,17 +148,17 @@ public class DscMessageManager : IDisposable
 
                     // Convert to float array
                     float[] signal = Utils.ConvertToFloatArray(audioData);
-                    
+
                     if (signal.Length == 0)
                     {
-                        await Task.Delay(sleepDelayMs, cancellationToken);
+                        await Task.Delay(idleDelayMs, cancellationToken);
                         continue;
                     }
 
                     // Apply squelch detection
                     if (!_squelchLevelDetector.Detect(signal))
                     {
-                        await Task.Delay(sleepDelayMs, cancellationToken);
+                        await Task.Delay(idleDelayMs, cancellationToken);
                         continue;
                     }
 
@@ -163,13 +167,13 @@ public class DscMessageManager : IDisposable
                     
                     if (processedSignal == null || processedSignal.Length == 0)
                     {
-                        await Task.Delay(sleepDelayMs, cancellationToken);
+                        await Task.Delay(idleDelayMs, cancellationToken);
                         continue;
                     }
 
                     // Decode FSK
                     var bits = _dscDecoder.DecodeFSK(processedSignal, _autoTuner.LeftFreq, _autoTuner.RightFreq);
-                    
+
                     if (bits != null)
                     {
                         // Process bits through decoders
@@ -186,10 +190,9 @@ public class DscMessageManager : IDisposable
                     _consecutiveReadErrors = 0;
                     _consecutiveProcessingErrors = 0;
 
-                    // Small delay to prevent excessive CPU usage
-                    if (sleepDelayMs > 0)
+                    if (_processingDelayMs > 0)
                     {
-                        await Task.Delay(sleepDelayMs, cancellationToken);
+                        await Task.Delay(_processingDelayMs, cancellationToken);
                     }
                 }
                 catch (OperationCanceledException)
